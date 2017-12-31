@@ -1,0 +1,143 @@
+swagger: "2.0"
+
+info:
+  title: Akasha World
+  version: beta
+  contact:
+    email: "Péter Szilágyi <peterke@gmail.com>"
+  description: |
+    Restful HTTP API for the Akasha decentralized social network.
+
+    It is important to be aware that all information returned by the Akasha API is gathered from decentralized networks (Ethereum and IPFS). This has important consequences callers need to be aware of:
+      * Returned information is only as recent as the latest Ethereum block processed by the API server. To avoid callers acting on potentially stale data, the API server will always return a timestamp for every request, corresponding to the latest Ethereum block's timestamp.
+      * Data content might occasionally be unavailable if the hosting IPFS nodes are offline. To ensure callers are aware that some data is unreachable at endpoint invocation time, the API server will explicitly return `null` for such fields.
+schemes:
+  - http
+  - https
+host: "{{.Host}}"
+basePath: "{{.Base}}"
+
+tags:
+  - name: User
+    description: User methods provide access to information and operations relating to registered Akasha users.
+
+paths:
+  /users/{id}:
+    get:
+      tags:
+        - User
+      summary: Retrieve user profile
+      description: This endpoint can be used to retrieve all the available profile information about an Akasha user.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Akasha user or Ethereum address
+          type: string
+      responses:
+        200:
+          description: Successful retrieval
+          schema:
+            $ref: "#/definitions/User"
+        404:
+          description: Non-registered user
+        429:
+          description: API quota exceeded
+
+  /entries/{id}:
+    get:
+      tags:
+        - Entry
+      summary: Retrieve user profile
+      parameters:
+        - name: id
+          in: body
+          required: true
+          description: Akasha user or Ethereum address
+          type: string
+      responses:
+        200:
+          description: A User
+          schema:
+            $ref: "#/definitions/User"
+
+definitions:
+  User:
+    properties:
+      user:
+        type: string
+        description: Unique user label within Akasha
+      name:
+        type: string
+        description: First and last name concatenated
+      address:
+        type: string
+        format: hex address
+        description: Ethereum address owning this profile
+      about:
+        type: string
+        description: Short biography provided by the user
+      avatar:
+        type: string
+        format: url
+        description: Profile picture through the IPFS gateway
+      cover:
+        type: string
+        format: url
+        description: Cover photo through the IPFS gateway
+      links:
+        type: array
+        items:
+          type: string
+          format: url
+        description: Collection of links provided by the user
+      tips:
+        type: boolean
+        description: Whether the user accepts Ether tips
+      aether:
+        type: string
+        format: hex bigint, 18 decimals
+        description: Aether balance free to interact with
+      bonded:
+        type: string
+        format: hex bigint, 18 decimals
+        description: Aether locked up for Mana
+      cycling:
+        type: string
+        format: hex bigint, 18 decimals
+        description: Mana converting back into Aether
+      mana:
+        type: string
+        format: hex bigint, 18 decimals
+        description: Daily Mana allowance for interactions
+      spent:
+        type: string
+        format: hex bigint, 18 decimals
+        description: Already expended Mana in the last day
+      essence:
+        type: string
+        format: hex bigint, 18 decimals
+        description: Essence balance convertible to Aether
+      karma:
+        type: string
+        format: hex bigint, 18 decimals
+        description: Karma points for user reputation
+    example:
+      user: "karalabe"
+      name: "Péter Szilágyi"
+      address: "0xd9c9cd5f6779558b6e0ed4e6acf6b1947e7fa1f3"
+      about: "I like ducks ;)"
+      avatar: "https://ipfs.io/ipfs/QmTTd6yzPo3uVZSZPvkvRUyNrCuEpzjn5FMmQPEVd6ftHP"
+      cover: "https://ipfs.io/ipfs/QmUE6hhwqTc9ZdEtoWV8syTAcKsNT9QdD8QtFp3RWHQ2T8"
+      links: [
+        "https://twitter.com/peter_szilagyi",
+        "https://github.com/karalabe",
+      ]
+      tips: true
+      aether: "0x643a7cd89c7ce38e3"
+      bonded: "0x3635c9adc5dea00000"
+      cycling: "0x0"
+      mana: "0x3635c9adc5dea00000"
+      spent: "0x542253a126ce40000"
+      essence: "0x138400eca364a00000"
+      karma: "0x4be4e7267b6ae00000"
