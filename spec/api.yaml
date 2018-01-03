@@ -122,6 +122,9 @@ definitions:
         type: string
         format: hex bigint, 18 decimals
         description: Karma points for user reputation
+      entries:
+        type: int
+        description: Number of possts the user made
     example:
       user: "karalabe"
       name: "Péter Szilágyi"
@@ -141,3 +144,4 @@ definitions:
       spent: "0x542253a126ce40000"
       essence: "0x138400eca364a00000"
       karma: "0x4be4e7267b6ae00000"
+      entries: 7

@@ -28,6 +28,7 @@ type akasha struct {
 	essence   *contracts.Essence
 	resolver  *contracts.ProfileResolver
 	registrar *contracts.ProfileRegistrar
+	entries   *contracts.Entries
 	feed      *contracts.Feed
 }
 
@@ -37,6 +38,7 @@ type config struct {
 	EssenceAddress   common.Address
 	ResolverAddress  common.Address
 	RegistrarAddress common.Address
+	EntriesAddress   common.Address
 }
 
 // makeAkasha creates a programatic interface to the Akasha smart contracts.
@@ -64,12 +66,17 @@ func makeAkasha(geth *node.Node, ipfs *ipfs, conf *config) (*akasha, error) {
 	if err != nil {
 		return nil, err
 	}
+	entries, err := contracts.NewEntries(conf.EntriesAddress, client)
+	if err != nil {
+		return nil, err
+	}
 	return &akasha{
 		ipfs:      ipfs,
 		aeth:      aeth,
 		essence:   essence,
 		resolver:  resolver,
 		registrar: registrar,
+		entries:   entries,
 	}, nil
 }
 
@@ -91,6 +98,7 @@ type user struct {
 	Spent   *hexutil.Big   `json:"spent"`
 	Essence *hexutil.Big   `json:"essence"`
 	Karma   *hexutil.Big   `json:"karma"`
+	Entries uint64         `json:"entries"`
 }
 
 // userByID does an ENS lookup to get the registration node of the user and
@@ -189,7 +197,7 @@ func (a *akasha) user(node [32]byte) (*user, error) {
 			}
 		}
 	}
-	// Return the token infos from the ledger contract
+	// Retrieve the token infos from the ledger contract
 	balances, err := a.aeth.GetTokenRecords(nil, profile.Addr)
 	if err != nil {
 		return nil, err
@@ -199,6 +207,11 @@ func (a *akasha) user(node [32]byte) (*user, error) {
 		return nil, err
 	}
 	mana, err := a.essence.Mana(nil, profile.Addr)
+	if err != nil {
+		return nil, err
+	}
+	// Retrieve user post statistics
+	entries, err := a.entries.GetEntryCount(nil, profile.Addr)
 	if err != nil {
 		return nil, err
 	}
@@ -218,5 +231,6 @@ func (a *akasha) user(node [32]byte) (*user, error) {
 		Spent:   (*hexutil.Big)(mana.Spent),
 		Essence: (*hexutil.Big)(credits.Essence),
 		Karma:   (*hexutil.Big)(credits.Karma),
+		Entries: entries.Uint64(),
 	}, nil
 }
