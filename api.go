@@ -31,34 +31,61 @@ func (api *api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	switch path[0] {
 	case "users":
-		// Ensure we have an actual ID to look up
-		if len(path) != 2 {
-			http.Error(w, "bad request", http.StatusBadRequest)
-			return
+		switch {
+		case len(path) == 2:
+			// User profile requested, look up and return
+			user, err := api.user(path[1])
+			if err != nil {
+				if err == errUnknownUser {
+					http.Error(w, err.Error(), http.StatusNotFound)
+					return
+				}
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			res = user
+
+		case len(path) == 3 && path[2] == "entries":
+			// User's entry list requested, filter for and return
+			entries, err := api.entries(path[1])
+			if err != nil {
+				if err == errUnknownUser || err == errUnknownEntry {
+					http.Error(w, err.Error(), http.StatusNotFound)
+					return
+				}
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			res = entries
+
+		case len(path) == 4 && path[2] == "entries":
+			// User's particular entry post requested, locate and return
+			entry, err := api.entry(path[1], common.HexToHash(path[3]))
+			if err != nil {
+				if err == errUnknownUser || err == errUnknownEntry {
+					http.Error(w, err.Error(), http.StatusNotFound)
+					return
+				}
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			res = entry
 		}
-		// Depending on the ID type, either look up by address or username
-		if common.IsHexAddress(path[1]) {
-			user, err := api.akasha.userByAddress(common.HexToAddress(path[1]))
+
+	case "entries":
+		// Anonymous entry requested, look up and return
+		switch {
+		case len(path) == 2:
+			entry, err := api.akasha.Entry(common.HexToHash(path[1]))
 			if err != nil {
-				if err == errUnknownUser {
+				if err == errUnknownEntry {
 					http.Error(w, err.Error(), http.StatusNotFound)
 					return
 				}
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			res = user
-		} else {
-			user, err := api.akasha.userByID(path[1])
-			if err != nil {
-				if err == errUnknownUser {
-					http.Error(w, err.Error(), http.StatusNotFound)
-					return
-				}
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			res = user
+			res = entry
 		}
 
 	default:
@@ -69,4 +96,31 @@ func (api *api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	enc.Encode(res)
+}
+
+// user tries to figure out whether id is an Akasha username or an Ethereum
+// address and retrieves the Akasha profile associated with it.
+func (api *api) user(id string) (*User, error) {
+	if common.IsHexAddress(id) {
+		return api.akasha.UserByAddress(common.HexToAddress(id))
+	}
+	return api.akasha.UserByName(id)
+}
+
+// entries tries to figure out whether id is an Akasha username or an Ethereum
+// address and retrieves the Akasha entries posted by it.
+func (api *api) entries(id string) ([]common.Hash, error) {
+	if common.IsHexAddress(id) {
+		return api.akasha.EntriesByAddress(common.HexToAddress(id))
+	}
+	return api.akasha.EntriesByName(id)
+}
+
+// entry tries to figure out whether id is an Akasha username or an Ethereum
+// address and retrieves the Akasha entry belonging to it.
+func (api *api) entry(id string, hash common.Hash) (*Entry, error) {
+	if common.IsHexAddress(id) {
+		return api.akasha.EntryByAddress(common.HexToAddress(id), hash)
+	}
+	return api.akasha.EntryByName(id, hash)
 }

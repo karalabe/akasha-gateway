@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/eth"
+	"github.com/ethereum/go-ethereum/eth/downloader"
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/p2p/discover"
@@ -40,8 +41,9 @@ func makeGeth(datadir string) (*node.Node, error) {
 		return eth.New(ctx, &eth.Config{
 			Genesis:         core.DefaultRinkebyGenesisBlock(),
 			NetworkId:       params.RinkebyChainConfig.ChainId.Uint64(),
-			DatabaseHandles: 2048,
+			DatabaseHandles: 1024,
 			DatabaseCache:   2048,
+			SyncMode:        downloader.FastSync,
 			TxPool:          core.DefaultTxPoolConfig,
 			GPO:             eth.DefaultConfig.GPO,
 		})

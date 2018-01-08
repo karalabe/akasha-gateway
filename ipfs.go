@@ -49,7 +49,7 @@ func makeIpfs(datadir string) (*ipfs, error) {
 	conf := cfg.Config{
 		Bootstrap: cfg.DefaultBootstrapAddresses,
 	}
-	conf.Addresses.Swarm = []string{"/ip4/0.0.0.0/tcp/4001"}
+	conf.Addresses.Swarm = []string{"/ip4/0.0.0.0/tcp/0"}
 	conf.Identity.PeerID = pid.Pretty()
 	conf.Identity.PrivKey = base64.StdEncoding.EncodeToString(privkeyb)
 

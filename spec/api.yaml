@@ -20,13 +20,15 @@ basePath: "{{.Base}}"
 tags:
   - name: User
     description: User methods provide access to information and operations relating to registered Akasha users.
+  - name: Entry
+    description: Entry methods provide access to information and operations relating to Akasha content entries.
 
 paths:
   /users/{id}:
     get:
       tags:
         - User
-      summary: Retrieve user profile
+      summary: Fetch user's profile
       description: This endpoint can be used to retrieve all the available profile information about an Akasha user.
       parameters:
         - name: id
@@ -44,25 +46,84 @@ paths:
         429:
           description: API quota exceeded
 
-  /entries/{id}:
+  /users/{id}/entries:
     get:
       tags:
+        - User
         - Entry
-      summary: Retrieve user profile
+      summary: Fetch user's list of entries
+      description: This endpoint can be used to retrieve the unique identifier of all the posts made by an Akasha user.
       parameters:
         - name: id
-          in: body
+          in: path
           required: true
           description: Akasha user or Ethereum address
           type: string
       responses:
         200:
-          description: A User
+          description: Successful retrieval
           schema:
-            $ref: "#/definitions/User"
+            $ref: "#/definitions/Entries"
+        404:
+          description: Non-registered user or non-existent post
+        429:
+          description: API quota exceeded
+
+  /users/{userId}/entries/{entryId}:
+    get:
+      tags:
+        - User
+        - Entry
+      summary: Fetch entry by known user
+      description: This endpoint can be used to retrieve all the available information about an Akasha post, which is known to have been made by a particular user.
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: Akasha user or Ethereum address
+          type: string
+        - name: entryId
+          in: path
+          required: true
+          description: Unique Akasha entry ID
+          type: string
+          format: hex hash
+      responses:
+        200:
+          description: Successful retrieval
+          schema:
+            $ref: "#/definitions/Entry"
+        404:
+          description: Non-registered user or non-existent post
+        429:
+          description: API quota exceeded
+
+  /entries/{id}:
+    get:
+      tags:
+        - Entry
+      summary: Fetch entry by unknown user
+      description: This endpoint can be used to retrieve all the available information about an Akasha post, the author of which is an unknown user.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Unique Akasha entry ID
+          type: string
+          format: hex hash
+      responses:
+        200:
+          description: Successful retrieval
+          schema:
+            $ref: "#/definitions/Entry"
+        404:
+          description: Non-existent post
+        429:
+          description: API quota exceeded
 
 definitions:
   User:
+    description: Profile and balance infos of an Akasha user
     properties:
       user:
         type: string
@@ -145,3 +206,86 @@ definitions:
       essence: "0x138400eca364a00000"
       karma: "0x4be4e7267b6ae00000"
       entries: 7
+
+  Entries:
+    description: List of unique identifiers of posts made by a user.
+    type: array
+    items:
+      type: string
+      format: hex hash
+    example: [
+      "0xed951ca616c92d7f31c0d60a92d1391699d918b8457fb128864d4350fe970c0f",
+      "0x2ac945f841635a24efbaaf6c59cc09f40e2e5e882131a25e0d98704467587a60",
+      "0x17d273662f3250f050351089c87df7423331f4b526bd9babbadc02453e563495",
+      "0xd537a1e2d0f22bb5751ae66e5ae6f556b36f696bcad22e303fbf1802b6dbfb02",
+      "0x3c38496f4cfa396b536a4b81ebacf9f92f0a0ec494b782ad4717f6186e57b467",
+      "0x50bd1828bc029ac736a5dbb4646a45d174a9aa88de87708a0992e9726a165510",
+      "0x562a366d4b2105aa6ff7b1a06f86bae4178ebae79878d8c5681242c1e2a3f022",
+      "0x4ac6aba5db021f19432f55133c1fe9ca19b3a01fccf10873e3d709b4d06da3d5"
+    ]
+
+  Entry:
+    description: Metadata and content of an Akasha post
+    properties:
+      id:
+        type: string
+        format: hex hash
+        description: Unique entry ID within Akasha
+      title:
+        type: string
+        description: Post title given by the author
+      author:
+        type: string
+        format: hex address
+        description: Ethereum address of the author
+      published:
+        type: string
+        format: time
+        description: Publishing time of the entry
+      tags:
+        type: array
+        items:
+          type: string
+        description: Search tags given by the author
+      version:
+        type: int
+        description: Number of times the entry was edited
+      content:
+        type: array
+        items:
+          type: object
+          properties:
+            caption:
+              type: string
+              description: Caption under a media object (excludes text)
+            image:
+              type: string
+              format: url
+              description: Image through the IPFS gateway (excludes text)
+            text:
+              type: string
+              description: Textual paragraph (excludes caption/image)
+        description: Entry contents per post paragraph
+    example:
+      id: "0x3c38496f4cfa396b536a4b81ebacf9f92f0a0ec494b782ad4717f6186e57b467"
+      title: "Akasha ProTip: AETH for existing Rinkeby users"
+      author: "0xd9c9cd5f6779558b6e0ed4e6acf6b1947e7fa1f3"
+      published: "2017-12-28T15:57:01+02:00"
+      tags: [
+        "akasha",
+        "aeth",
+        "testnet"
+      ]
+      version: 0
+      content: [
+        {
+          text: "If you have an existing Ethereum account on the Rinkeby testnet and log in to Akasha using it, you won't get onboarded, and as such, won't get any AETH to interact with Akasha."
+        },
+        {
+          text: "A simple hack to keep your user but still get some test AETH is to (1) log out; (2) create a new Akasha account; (3) transfer all the onboarded AETH from the new account to your old one (maybe even get the ETH grant); (4) delete the temporary account from your keystore."
+        },
+        {
+          image: "https://ipfs.io/ipfs/QmcMtstnb8KYquqoQu6mjAa2u8s7f2kkLPrQBVLNSq2Ypn",
+          caption: "Hackerman"
+        }
+      ]

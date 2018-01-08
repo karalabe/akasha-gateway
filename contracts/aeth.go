@@ -7,10 +7,12 @@ import (
 	"math/big"
 	"strings"
 
+	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/event"
 )
 
 // AETHABI is the input ABI used to generate the binding from.
@@ -20,6 +22,7 @@ const AETHABI = "[{\"constant\":true,\"inputs\":[],\"name\":\"mintingFinished\",
 type AETH struct {
 	AETHCaller     // Read-only binding to the contract
 	AETHTransactor // Write-only binding to the contract
+	AETHFilterer   // Log filterer for contract events
 }
 
 // AETHCaller is an auto generated read-only Go binding around an Ethereum contract.
@@ -29,6 +32,11 @@ type AETHCaller struct {
 
 // AETHTransactor is an auto generated write-only Go binding around an Ethereum contract.
 type AETHTransactor struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// AETHFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
+type AETHFilterer struct {
 	contract *bind.BoundContract // Generic contract wrapper for the low level calls
 }
 
@@ -71,16 +79,16 @@ type AETHTransactorRaw struct {
 
 // NewAETH creates a new instance of AETH, bound to a specific deployed contract.
 func NewAETH(address common.Address, backend bind.ContractBackend) (*AETH, error) {
-	contract, err := bindAETH(address, backend, backend)
+	contract, err := bindAETH(address, backend, backend, backend)
 	if err != nil {
 		return nil, err
 	}
-	return &AETH{AETHCaller: AETHCaller{contract: contract}, AETHTransactor: AETHTransactor{contract: contract}}, nil
+	return &AETH{AETHCaller: AETHCaller{contract: contract}, AETHTransactor: AETHTransactor{contract: contract}, AETHFilterer: AETHFilterer{contract: contract}}, nil
 }
 
 // NewAETHCaller creates a new read-only instance of AETH, bound to a specific deployed contract.
 func NewAETHCaller(address common.Address, caller bind.ContractCaller) (*AETHCaller, error) {
-	contract, err := bindAETH(address, caller, nil)
+	contract, err := bindAETH(address, caller, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -89,20 +97,29 @@ func NewAETHCaller(address common.Address, caller bind.ContractCaller) (*AETHCal
 
 // NewAETHTransactor creates a new write-only instance of AETH, bound to a specific deployed contract.
 func NewAETHTransactor(address common.Address, transactor bind.ContractTransactor) (*AETHTransactor, error) {
-	contract, err := bindAETH(address, nil, transactor)
+	contract, err := bindAETH(address, nil, transactor, nil)
 	if err != nil {
 		return nil, err
 	}
 	return &AETHTransactor{contract: contract}, nil
 }
 
+// NewAETHFilterer creates a new log filterer instance of AETH, bound to a specific deployed contract.
+func NewAETHFilterer(address common.Address, filterer bind.ContractFilterer) (*AETHFilterer, error) {
+	contract, err := bindAETH(address, nil, nil, filterer)
+	if err != nil {
+		return nil, err
+	}
+	return &AETHFilterer{contract: contract}, nil
+}
+
 // bindAETH binds a generic wrapper to an already deployed contract.
-func bindAETH(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor) (*bind.BoundContract, error) {
+func bindAETH(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
 	parsed, err := abi.JSON(strings.NewReader(AETHABI))
 	if err != nil {
 		return nil, err
 	}
-	return bind.NewBoundContract(address, parsed, caller, transactor), nil
+	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
 }
 
 // Call invokes the (constant) contract method with params as input values and
@@ -947,4 +964,1202 @@ func (_AETH *AETHSession) Unpause() (*types.Transaction, error) {
 // Solidity: function unpause() returns()
 func (_AETH *AETHTransactorSession) Unpause() (*types.Transaction, error) {
 	return _AETH.Contract.Unpause(&_AETH.TransactOpts)
+}
+
+// AETHApprovalIterator is returned from FilterApproval and is used to iterate over the raw logs and unpacked data for Approval events raised by the AETH contract.
+type AETHApprovalIterator struct {
+	Event *AETHApproval // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *AETHApprovalIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(AETHApproval)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(AETHApproval)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error retruned any retrieval or parsing error occured during filtering.
+func (it *AETHApprovalIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *AETHApprovalIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// AETHApproval represents a Approval event raised by the AETH contract.
+type AETHApproval struct {
+	Owner   common.Address
+	Spender common.Address
+	Value   *big.Int
+	Raw     types.Log // Blockchain specific contextual infos
+}
+
+// FilterApproval is a free log retrieval operation binding the contract event 0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925.
+//
+// Solidity: event Approval(owner indexed address, spender indexed address, value uint256)
+func (_AETH *AETHFilterer) FilterApproval(opts *bind.FilterOpts, owner []common.Address, spender []common.Address) (*AETHApprovalIterator, error) {
+
+	var ownerRule []interface{}
+	for _, ownerItem := range owner {
+		ownerRule = append(ownerRule, ownerItem)
+	}
+	var spenderRule []interface{}
+	for _, spenderItem := range spender {
+		spenderRule = append(spenderRule, spenderItem)
+	}
+
+	logs, sub, err := _AETH.contract.FilterLogs(opts, "Approval", ownerRule, spenderRule)
+	if err != nil {
+		return nil, err
+	}
+	return &AETHApprovalIterator{contract: _AETH.contract, event: "Approval", logs: logs, sub: sub}, nil
+}
+
+// WatchApproval is a free log subscription operation binding the contract event 0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925.
+//
+// Solidity: event Approval(owner indexed address, spender indexed address, value uint256)
+func (_AETH *AETHFilterer) WatchApproval(opts *bind.WatchOpts, sink chan<- *AETHApproval, owner []common.Address, spender []common.Address) (event.Subscription, error) {
+
+	var ownerRule []interface{}
+	for _, ownerItem := range owner {
+		ownerRule = append(ownerRule, ownerItem)
+	}
+	var spenderRule []interface{}
+	for _, spenderItem := range spender {
+		spenderRule = append(spenderRule, spenderItem)
+	}
+
+	logs, sub, err := _AETH.contract.WatchLogs(opts, "Approval", ownerRule, spenderRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(AETHApproval)
+				if err := _AETH.contract.UnpackLog(event, "Approval", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+		return nil
+	}), nil
+}
+
+// AETHDonateIterator is returned from FilterDonate and is used to iterate over the raw logs and unpacked data for Donate events raised by the AETH contract.
+type AETHDonateIterator struct {
+	Event *AETHDonate // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *AETHDonateIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(AETHDonate)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(AETHDonate)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error retruned any retrieval or parsing error occured during filtering.
+func (it *AETHDonateIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *AETHDonateIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// AETHDonate represents a Donate event raised by the AETH contract.
+type AETHDonate struct {
+	From      common.Address
+	To        common.Address
+	Aeth      *big.Int
+	Eth       *big.Int
+	ExtraData string
+	Raw       types.Log // Blockchain specific contextual infos
+}
+
+// FilterDonate is a free log retrieval operation binding the contract event 0xf0867503c5147c27b10a8e12f7c0ca20f597dc2174d3a6b51a25cb7c5191460a.
+//
+// Solidity: event Donate(from indexed address, to indexed address, aeth uint256, eth uint256, extraData string)
+func (_AETH *AETHFilterer) FilterDonate(opts *bind.FilterOpts, from []common.Address, to []common.Address) (*AETHDonateIterator, error) {
+
+	var fromRule []interface{}
+	for _, fromItem := range from {
+		fromRule = append(fromRule, fromItem)
+	}
+	var toRule []interface{}
+	for _, toItem := range to {
+		toRule = append(toRule, toItem)
+	}
+
+	logs, sub, err := _AETH.contract.FilterLogs(opts, "Donate", fromRule, toRule)
+	if err != nil {
+		return nil, err
+	}
+	return &AETHDonateIterator{contract: _AETH.contract, event: "Donate", logs: logs, sub: sub}, nil
+}
+
+// WatchDonate is a free log subscription operation binding the contract event 0xf0867503c5147c27b10a8e12f7c0ca20f597dc2174d3a6b51a25cb7c5191460a.
+//
+// Solidity: event Donate(from indexed address, to indexed address, aeth uint256, eth uint256, extraData string)
+func (_AETH *AETHFilterer) WatchDonate(opts *bind.WatchOpts, sink chan<- *AETHDonate, from []common.Address, to []common.Address) (event.Subscription, error) {
+
+	var fromRule []interface{}
+	for _, fromItem := range from {
+		fromRule = append(fromRule, fromItem)
+	}
+	var toRule []interface{}
+	for _, toItem := range to {
+		toRule = append(toRule, toItem)
+	}
+
+	logs, sub, err := _AETH.contract.WatchLogs(opts, "Donate", fromRule, toRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(AETHDonate)
+				if err := _AETH.contract.UnpackLog(event, "Donate", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+		return nil
+	}), nil
+}
+
+// AETHMintIterator is returned from FilterMint and is used to iterate over the raw logs and unpacked data for Mint events raised by the AETH contract.
+type AETHMintIterator struct {
+	Event *AETHMint // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *AETHMintIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(AETHMint)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(AETHMint)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error retruned any retrieval or parsing error occured during filtering.
+func (it *AETHMintIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *AETHMintIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// AETHMint represents a Mint event raised by the AETH contract.
+type AETHMint struct {
+	To     common.Address
+	Amount *big.Int
+	Raw    types.Log // Blockchain specific contextual infos
+}
+
+// FilterMint is a free log retrieval operation binding the contract event 0x0f6798a560793a54c3bcfe86a93cde1e73087d944c0ea20544137d4121396885.
+//
+// Solidity: event Mint(to indexed address, amount uint256)
+func (_AETH *AETHFilterer) FilterMint(opts *bind.FilterOpts, to []common.Address) (*AETHMintIterator, error) {
+
+	var toRule []interface{}
+	for _, toItem := range to {
+		toRule = append(toRule, toItem)
+	}
+
+	logs, sub, err := _AETH.contract.FilterLogs(opts, "Mint", toRule)
+	if err != nil {
+		return nil, err
+	}
+	return &AETHMintIterator{contract: _AETH.contract, event: "Mint", logs: logs, sub: sub}, nil
+}
+
+// WatchMint is a free log subscription operation binding the contract event 0x0f6798a560793a54c3bcfe86a93cde1e73087d944c0ea20544137d4121396885.
+//
+// Solidity: event Mint(to indexed address, amount uint256)
+func (_AETH *AETHFilterer) WatchMint(opts *bind.WatchOpts, sink chan<- *AETHMint, to []common.Address) (event.Subscription, error) {
+
+	var toRule []interface{}
+	for _, toItem := range to {
+		toRule = append(toRule, toItem)
+	}
+
+	logs, sub, err := _AETH.contract.WatchLogs(opts, "Mint", toRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(AETHMint)
+				if err := _AETH.contract.UnpackLog(event, "Mint", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+		return nil
+	}), nil
+}
+
+// AETHMintFinishedIterator is returned from FilterMintFinished and is used to iterate over the raw logs and unpacked data for MintFinished events raised by the AETH contract.
+type AETHMintFinishedIterator struct {
+	Event *AETHMintFinished // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *AETHMintFinishedIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(AETHMintFinished)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(AETHMintFinished)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error retruned any retrieval or parsing error occured during filtering.
+func (it *AETHMintFinishedIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *AETHMintFinishedIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// AETHMintFinished represents a MintFinished event raised by the AETH contract.
+type AETHMintFinished struct {
+	Raw types.Log // Blockchain specific contextual infos
+}
+
+// FilterMintFinished is a free log retrieval operation binding the contract event 0xae5184fba832cb2b1f702aca6117b8d265eaf03ad33eb133f19dde0f5920fa08.
+//
+// Solidity: event MintFinished()
+func (_AETH *AETHFilterer) FilterMintFinished(opts *bind.FilterOpts) (*AETHMintFinishedIterator, error) {
+
+	logs, sub, err := _AETH.contract.FilterLogs(opts, "MintFinished")
+	if err != nil {
+		return nil, err
+	}
+	return &AETHMintFinishedIterator{contract: _AETH.contract, event: "MintFinished", logs: logs, sub: sub}, nil
+}
+
+// WatchMintFinished is a free log subscription operation binding the contract event 0xae5184fba832cb2b1f702aca6117b8d265eaf03ad33eb133f19dde0f5920fa08.
+//
+// Solidity: event MintFinished()
+func (_AETH *AETHFilterer) WatchMintFinished(opts *bind.WatchOpts, sink chan<- *AETHMintFinished) (event.Subscription, error) {
+
+	logs, sub, err := _AETH.contract.WatchLogs(opts, "MintFinished")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(AETHMintFinished)
+				if err := _AETH.contract.UnpackLog(event, "MintFinished", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+		return nil
+	}), nil
+}
+
+// AETHOwnershipTransferredIterator is returned from FilterOwnershipTransferred and is used to iterate over the raw logs and unpacked data for OwnershipTransferred events raised by the AETH contract.
+type AETHOwnershipTransferredIterator struct {
+	Event *AETHOwnershipTransferred // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *AETHOwnershipTransferredIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(AETHOwnershipTransferred)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(AETHOwnershipTransferred)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error retruned any retrieval or parsing error occured during filtering.
+func (it *AETHOwnershipTransferredIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *AETHOwnershipTransferredIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// AETHOwnershipTransferred represents a OwnershipTransferred event raised by the AETH contract.
+type AETHOwnershipTransferred struct {
+	PreviousOwner common.Address
+	NewOwner      common.Address
+	Raw           types.Log // Blockchain specific contextual infos
+}
+
+// FilterOwnershipTransferred is a free log retrieval operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
+//
+// Solidity: event OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
+func (_AETH *AETHFilterer) FilterOwnershipTransferred(opts *bind.FilterOpts, previousOwner []common.Address, newOwner []common.Address) (*AETHOwnershipTransferredIterator, error) {
+
+	var previousOwnerRule []interface{}
+	for _, previousOwnerItem := range previousOwner {
+		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
+	}
+	var newOwnerRule []interface{}
+	for _, newOwnerItem := range newOwner {
+		newOwnerRule = append(newOwnerRule, newOwnerItem)
+	}
+
+	logs, sub, err := _AETH.contract.FilterLogs(opts, "OwnershipTransferred", previousOwnerRule, newOwnerRule)
+	if err != nil {
+		return nil, err
+	}
+	return &AETHOwnershipTransferredIterator{contract: _AETH.contract, event: "OwnershipTransferred", logs: logs, sub: sub}, nil
+}
+
+// WatchOwnershipTransferred is a free log subscription operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
+//
+// Solidity: event OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
+func (_AETH *AETHFilterer) WatchOwnershipTransferred(opts *bind.WatchOpts, sink chan<- *AETHOwnershipTransferred, previousOwner []common.Address, newOwner []common.Address) (event.Subscription, error) {
+
+	var previousOwnerRule []interface{}
+	for _, previousOwnerItem := range previousOwner {
+		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
+	}
+	var newOwnerRule []interface{}
+	for _, newOwnerItem := range newOwner {
+		newOwnerRule = append(newOwnerRule, newOwnerItem)
+	}
+
+	logs, sub, err := _AETH.contract.WatchLogs(opts, "OwnershipTransferred", previousOwnerRule, newOwnerRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(AETHOwnershipTransferred)
+				if err := _AETH.contract.UnpackLog(event, "OwnershipTransferred", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+		return nil
+	}), nil
+}
+
+// AETHPauseIterator is returned from FilterPause and is used to iterate over the raw logs and unpacked data for Pause events raised by the AETH contract.
+type AETHPauseIterator struct {
+	Event *AETHPause // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *AETHPauseIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(AETHPause)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(AETHPause)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error retruned any retrieval or parsing error occured during filtering.
+func (it *AETHPauseIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *AETHPauseIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// AETHPause represents a Pause event raised by the AETH contract.
+type AETHPause struct {
+	Raw types.Log // Blockchain specific contextual infos
+}
+
+// FilterPause is a free log retrieval operation binding the contract event 0x6985a02210a168e66602d3235cb6db0e70f92b3ba4d376a33c0f3d9434bff625.
+//
+// Solidity: event Pause()
+func (_AETH *AETHFilterer) FilterPause(opts *bind.FilterOpts) (*AETHPauseIterator, error) {
+
+	logs, sub, err := _AETH.contract.FilterLogs(opts, "Pause")
+	if err != nil {
+		return nil, err
+	}
+	return &AETHPauseIterator{contract: _AETH.contract, event: "Pause", logs: logs, sub: sub}, nil
+}
+
+// WatchPause is a free log subscription operation binding the contract event 0x6985a02210a168e66602d3235cb6db0e70f92b3ba4d376a33c0f3d9434bff625.
+//
+// Solidity: event Pause()
+func (_AETH *AETHFilterer) WatchPause(opts *bind.WatchOpts, sink chan<- *AETHPause) (event.Subscription, error) {
+
+	logs, sub, err := _AETH.contract.WatchLogs(opts, "Pause")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(AETHPause)
+				if err := _AETH.contract.UnpackLog(event, "Pause", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+		return nil
+	}), nil
+}
+
+// AETHTransferIterator is returned from FilterTransfer and is used to iterate over the raw logs and unpacked data for Transfer events raised by the AETH contract.
+type AETHTransferIterator struct {
+	Event *AETHTransfer // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *AETHTransferIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(AETHTransfer)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(AETHTransfer)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error retruned any retrieval or parsing error occured during filtering.
+func (it *AETHTransferIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *AETHTransferIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// AETHTransfer represents a Transfer event raised by the AETH contract.
+type AETHTransfer struct {
+	From  common.Address
+	To    common.Address
+	Value *big.Int
+	Raw   types.Log // Blockchain specific contextual infos
+}
+
+// FilterTransfer is a free log retrieval operation binding the contract event 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef.
+//
+// Solidity: event Transfer(from indexed address, to indexed address, value uint256)
+func (_AETH *AETHFilterer) FilterTransfer(opts *bind.FilterOpts, from []common.Address, to []common.Address) (*AETHTransferIterator, error) {
+
+	var fromRule []interface{}
+	for _, fromItem := range from {
+		fromRule = append(fromRule, fromItem)
+	}
+	var toRule []interface{}
+	for _, toItem := range to {
+		toRule = append(toRule, toItem)
+	}
+
+	logs, sub, err := _AETH.contract.FilterLogs(opts, "Transfer", fromRule, toRule)
+	if err != nil {
+		return nil, err
+	}
+	return &AETHTransferIterator{contract: _AETH.contract, event: "Transfer", logs: logs, sub: sub}, nil
+}
+
+// WatchTransfer is a free log subscription operation binding the contract event 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef.
+//
+// Solidity: event Transfer(from indexed address, to indexed address, value uint256)
+func (_AETH *AETHFilterer) WatchTransfer(opts *bind.WatchOpts, sink chan<- *AETHTransfer, from []common.Address, to []common.Address) (event.Subscription, error) {
+
+	var fromRule []interface{}
+	for _, fromItem := range from {
+		fromRule = append(fromRule, fromItem)
+	}
+	var toRule []interface{}
+	for _, toItem := range to {
+		toRule = append(toRule, toItem)
+	}
+
+	logs, sub, err := _AETH.contract.WatchLogs(opts, "Transfer", fromRule, toRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(AETHTransfer)
+				if err := _AETH.contract.UnpackLog(event, "Transfer", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+		return nil
+	}), nil
+}
+
+// AETHTransitionIterator is returned from FilterTransition and is used to iterate over the raw logs and unpacked data for Transition events raised by the AETH contract.
+type AETHTransitionIterator struct {
+	Event *AETHTransition // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *AETHTransitionIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(AETHTransition)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(AETHTransition)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error retruned any retrieval or parsing error occured during filtering.
+func (it *AETHTransitionIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *AETHTransitionIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// AETHTransition represents a Transition event raised by the AETH contract.
+type AETHTransition struct {
+	Owner common.Address
+	State uint8
+	Value *big.Int
+	Raw   types.Log // Blockchain specific contextual infos
+}
+
+// FilterTransition is a free log retrieval operation binding the contract event 0x0f30aa5a186db94018a20857f8cbe6f1156cb35de19b2f988e78733e44f6590f.
+//
+// Solidity: event Transition(owner address, state uint8, value uint256)
+func (_AETH *AETHFilterer) FilterTransition(opts *bind.FilterOpts) (*AETHTransitionIterator, error) {
+
+	logs, sub, err := _AETH.contract.FilterLogs(opts, "Transition")
+	if err != nil {
+		return nil, err
+	}
+	return &AETHTransitionIterator{contract: _AETH.contract, event: "Transition", logs: logs, sub: sub}, nil
+}
+
+// WatchTransition is a free log subscription operation binding the contract event 0x0f30aa5a186db94018a20857f8cbe6f1156cb35de19b2f988e78733e44f6590f.
+//
+// Solidity: event Transition(owner address, state uint8, value uint256)
+func (_AETH *AETHFilterer) WatchTransition(opts *bind.WatchOpts, sink chan<- *AETHTransition) (event.Subscription, error) {
+
+	logs, sub, err := _AETH.contract.WatchLogs(opts, "Transition")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(AETHTransition)
+				if err := _AETH.contract.UnpackLog(event, "Transition", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+		return nil
+	}), nil
+}
+
+// AETHUnpauseIterator is returned from FilterUnpause and is used to iterate over the raw logs and unpacked data for Unpause events raised by the AETH contract.
+type AETHUnpauseIterator struct {
+	Event *AETHUnpause // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *AETHUnpauseIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(AETHUnpause)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(AETHUnpause)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error retruned any retrieval or parsing error occured during filtering.
+func (it *AETHUnpauseIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *AETHUnpauseIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// AETHUnpause represents a Unpause event raised by the AETH contract.
+type AETHUnpause struct {
+	Raw types.Log // Blockchain specific contextual infos
+}
+
+// FilterUnpause is a free log retrieval operation binding the contract event 0x7805862f689e2f13df9f062ff482ad3ad112aca9e0847911ed832e158c525b33.
+//
+// Solidity: event Unpause()
+func (_AETH *AETHFilterer) FilterUnpause(opts *bind.FilterOpts) (*AETHUnpauseIterator, error) {
+
+	logs, sub, err := _AETH.contract.FilterLogs(opts, "Unpause")
+	if err != nil {
+		return nil, err
+	}
+	return &AETHUnpauseIterator{contract: _AETH.contract, event: "Unpause", logs: logs, sub: sub}, nil
+}
+
+// WatchUnpause is a free log subscription operation binding the contract event 0x7805862f689e2f13df9f062ff482ad3ad112aca9e0847911ed832e158c525b33.
+//
+// Solidity: event Unpause()
+func (_AETH *AETHFilterer) WatchUnpause(opts *bind.WatchOpts, sink chan<- *AETHUnpause) (event.Subscription, error) {
+
+	logs, sub, err := _AETH.contract.WatchLogs(opts, "Unpause")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(AETHUnpause)
+				if err := _AETH.contract.UnpackLog(event, "Unpause", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+		return nil
+	}), nil
 }

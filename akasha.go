@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -19,10 +20,14 @@ import (
 var (
 	// errUnknownUser is returned if a user cannot be found in the Akasha network.
 	errUnknownUser = errors.New("unknown user")
+
+	// errUnknownEntry is returned if an entry cannot be found in the Akasha network.
+	errUnknownEntry = errors.New("unknown entry")
 )
 
 // akasha represents the interface to the Akasha smart contracts.
 type akasha struct {
+	eth       *ethclient.Client
 	ipfs      *ipfs
 	aeth      *contracts.AETH
 	essence   *contracts.Essence
@@ -71,6 +76,7 @@ func makeAkasha(geth *node.Node, ipfs *ipfs, conf *config) (*akasha, error) {
 		return nil, err
 	}
 	return &akasha{
+		eth:       client,
 		ipfs:      ipfs,
 		aeth:      aeth,
 		essence:   essence,
@@ -80,9 +86,9 @@ func makeAkasha(geth *node.Node, ipfs *ipfs, conf *config) (*akasha, error) {
 	}, nil
 }
 
-// user represents all the known information about an Akasha user. The reason
+// User represents all the known information about an Akasha user. The reason
 // beind the nullable strings is to allow signalling unreachable IPFS content.
-type user struct {
+type User struct {
 	User    string         `json:"user"`
 	Name    *string        `json:"name"`
 	Address common.Address `json:"address"`
@@ -101,11 +107,61 @@ type user struct {
 	Entries uint64         `json:"entries"`
 }
 
-// userByID does an ENS lookup to get the registration node of the user and
+// image represents a serialize format of an Akasha image with multiple possbile
+// resolutions.
+type image struct {
+	ExtraSmall struct {
+		Src string `json:"src"`
+	} `json:"xs"`
+	Small struct {
+		Src string `json:"src"`
+	} `json:"sm"`
+	Medium struct {
+		Src string `json:"src"`
+	} `json:"md"`
+	Large struct {
+		Src string `json:"src"`
+	} `json:"xl"`
+	ExtraLarge struct {
+		Src string `json:"src"`
+	} `json:"xxl"`
+}
+
+// source returns the image source with the highest resolution.
+func (img *image) source() string {
+	if img.ExtraLarge.Src != "" {
+		return img.ExtraLarge.Src
+	}
+	if img.Large.Src != "" {
+		return img.Large.Src
+	}
+	if img.Medium.Src != "" {
+		return img.Medium.Src
+	}
+	if img.Small.Src != "" {
+		return img.Small.Src
+	}
+	if img.ExtraSmall.Src != "" {
+		return img.ExtraSmall.Src
+	}
+	return ""
+}
+
+// UserByAddress does a reverse ENS lookup to get the registration node of the
+// user and retrieves all known infos associated with it.
+func (a *akasha) UserByAddress(addr common.Address) (*User, error) {
+	node, err := a.resolver.Reverse(nil, addr)
+	if err != nil {
+		return nil, err
+	}
+	return a.user(node)
+}
+
+// UserByName does an ENS lookup to get the registration node of the user and
 // retrieves all known infos associated with it.
-func (a *akasha) userByID(id string) (*user, error) {
+func (a *akasha) UserByName(name string) (*User, error) {
 	var label [32]byte
-	copy(label[:], id)
+	copy(label[:], name)
 
 	node, err := a.registrar.Hash(nil, label)
 	if err != nil {
@@ -114,18 +170,8 @@ func (a *akasha) userByID(id string) (*user, error) {
 	return a.user(node)
 }
 
-// userByAddress does a reverse ENS lookup to get the registration node of the
-// user and retrieves all known infos associated with it.
-func (a *akasha) userByAddress(addr common.Address) (*user, error) {
-	node, err := a.resolver.Reverse(nil, addr)
-	if err != nil {
-		return nil, err
-	}
-	return a.user(node)
-}
-
 // user retrieves all the known infos about a user identified by it's ENS node.
-func (a *akasha) user(node [32]byte) (*user, error) {
+func (a *akasha) user(node [32]byte) (*User, error) {
 	// Retrieve the profile infos from the profile resolver
 	profile, err := a.resolver.Resolve(nil, node)
 	if err != nil {
@@ -154,14 +200,10 @@ func (a *akasha) user(node [32]byte) (*user, error) {
 
 		var (
 			blob []byte
+			bg   image
 			prof struct {
 				FirstName string `json:"firstName"`
 				LastName  string `json:"lastName"`
-			}
-			bg struct {
-				XXL struct {
-					Src string `json:"src"`
-				} `json:"xxl"`
 			}
 			urls []struct {
 				Url string `json:"url"`
@@ -183,9 +225,9 @@ func (a *akasha) user(node [32]byte) (*user, error) {
 			if err = json.Unmarshal(blob, &bg); err != nil {
 				return nil, err
 			}
-			if bg.XXL.Src != "" {
+			if src := bg.source(); src != "" {
 				cover = new(string)
-				*cover = "https://ipfs.io/ipfs/" + bg.XXL.Src
+				*cover = "https://ipfs.io/ipfs/" + src
 			}
 		}
 		if blob, err = a.ipfs.Content(ctx, objs["links"]); err == nil {
@@ -215,7 +257,7 @@ func (a *akasha) user(node [32]byte) (*user, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &user{
+	return &User{
 		User:    strings.TrimRight(string(profile.AkashaId[:]), string([]byte{0})),
 		Name:    name,
 		Address: profile.Addr,
@@ -233,4 +275,198 @@ func (a *akasha) user(node [32]byte) (*user, error) {
 		Karma:   (*hexutil.Big)(credits.Karma),
 		Entries: entries.Uint64(),
 	}, nil
+}
+
+// EntriesByAddress retrieves a list of entires posted by a user given its Ethereum
+// address.
+func (a *akasha) EntriesByAddress(addr common.Address) ([]common.Hash, error) {
+	// Filter the Ethereum events for Akasha entry publishes
+	it, err := a.entries.FilterPublish(nil, []common.Address{addr}, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer it.Close()
+
+	// Gather all the entry ids and return them to the user
+	var ids []common.Hash
+	for it.Next() {
+		ids = append(ids, it.Event.EntryId)
+	}
+	return ids, nil
+}
+
+// EntriesByName retrieves a list of entires posted by a user given its Akasha
+// username.
+func (a *akasha) EntriesByName(name string) ([]common.Hash, error) {
+	// Resolve the user's address from its ID
+	var label [32]byte
+	copy(label[:], name)
+
+	node, err := a.registrar.Hash(nil, label)
+	if err != nil {
+		return nil, err
+	}
+	profile, err := a.resolver.Resolve(nil, node)
+	if err != nil {
+		return nil, err
+	}
+	if profile.Addr == (common.Address{}) {
+		return nil, errUnknownUser
+	}
+	// Retrieve the user's entries using the Ethereum address
+	return a.EntriesByAddress(profile.Addr)
+}
+
+// Entry represents all the known information about an Akasha entry. The reason
+// beind the nullable strings is to allow signalling unreachable IPFS content.
+type Entry struct {
+	ID        common.Hash    `json:"id"`
+	Title     *string        `json:"title"`
+	Author    common.Address `json:"author"`
+	Published time.Time      `json:"published"`
+	Tags      *[]string      `json:"tags"`
+	Version   *int           `json:"version"`
+	Content   *[]Block       `json:"content"`
+}
+
+// Block represents a single paragraph in an Akasha entry, which might be purely
+// text, or might be some media object.
+type Block struct {
+	Text    string `json:"text,omitempty"`
+	Image   string `json:"image,omitempty"`
+	Caption string `json:"caption,omitempty"`
+}
+
+// Entry retrieves all the details about a particular entry any user might have
+// made.
+func (a *akasha) Entry(hash common.Hash) (*Entry, error) {
+	it, err := a.entries.FilterPublish(nil, nil, [][32]byte{hash})
+	if err != nil {
+		return nil, err
+	}
+	defer it.Close()
+
+	if !it.Next() {
+		return nil, errUnknownEntry
+	}
+	return a.entry(it.Event)
+}
+
+// EntryByAddress retrieves all the details about a particular entry a user made,
+// identified by the user's address and the entry id.
+func (a *akasha) EntryByAddress(addr common.Address, hash common.Hash) (*Entry, error) {
+	it, err := a.entries.FilterPublish(nil, []common.Address{addr}, [][32]byte{hash})
+	if err != nil {
+		return nil, err
+	}
+	defer it.Close()
+
+	if !it.Next() {
+		return nil, errUnknownEntry
+	}
+	return a.entry(it.Event)
+}
+
+// EntryByName retrieves all the details about a particular entry a user made,
+// identified by the user's name and the entry id.
+func (a *akasha) EntryByName(name string, hash common.Hash) (*Entry, error) {
+	// Resolve the user's address from its ID
+	var label [32]byte
+	copy(label[:], name)
+
+	node, err := a.registrar.Hash(nil, label)
+	if err != nil {
+		return nil, err
+	}
+	profile, err := a.resolver.Resolve(nil, node)
+	if err != nil {
+		return nil, err
+	}
+	if profile.Addr == (common.Address{}) {
+		return nil, errUnknownUser
+	}
+	// Retrieve the user's entry using the Ethereum address
+	return a.EntryByAddress(profile.Addr, hash)
+}
+
+// entry retrieves all the known details about an Akasha post based on the publish
+// log from the Ethereum contract.
+func (a *akasha) entry(event *contracts.EntriesPublish) (*Entry, error) {
+	// Resolve the IPFS id of the entry
+	post, err := a.entries.GetEntry(nil, event.Author, event.EntryId)
+	if err != nil {
+		return nil, err
+	}
+	id := base58.Encode(append([]byte{post.Fn, post.DigestSize}, post.Hash[:]...))
+
+	// Start assembling the entry with whatever data we can pull off IPFS
+	header, err := a.eth.HeaderByHash(context.TODO(), event.Raw.BlockHash)
+	if err != nil {
+		return nil, err
+	}
+	entry := &Entry{
+		ID:        event.EntryId,
+		Author:    event.Author,
+		Published: time.Unix(header.Time.Int64(), 0),
+	}
+	// Retrieve the components of the entry and resolve the individual contents
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	blob, err := a.ipfs.Content(ctx, id)
+	if err == nil {
+		// Entry metadata retrieved, parse the primary details
+		var metadata struct {
+			Title   string   `json:"title"`
+			Tags    []string `json:"tags"`
+			Version int      `json:"version"`
+			Parts   int      `json:"draftParts"`
+		}
+		if err = json.Unmarshal(blob, &metadata); err != nil {
+			return nil, err
+		}
+		entry.Title = &metadata.Title
+		entry.Tags = &metadata.Tags
+		entry.Version = &metadata.Version
+
+		objs, err := a.ipfs.Links(ctx, id)
+		if err == nil {
+			// Accumulate the individual parts of the entry
+			var document []byte
+
+			for i := 0; i < metadata.Parts; i++ {
+				if blob, err = a.ipfs.Content(ctx, objs[fmt.Sprintf("draft-part%d", i)]); err != nil {
+					break
+				}
+				document = append(document, blob...)
+			}
+			// Parse the document and create the list of data blocks
+			var doc struct {
+				Blocks []struct {
+					Text string `json:"text"`
+					Data struct {
+						Caption string `json:"caption"`
+						Files   image  `json:"files"`
+					} `json:"data"`
+				} `json:"blocks"`
+			}
+			if err = json.Unmarshal(document, &doc); err != nil {
+				return nil, err
+			}
+			content := []Block{}
+			for _, block := range doc.Blocks {
+				switch {
+				case block.Text != "":
+					content = append(content, Block{Text: block.Text})
+				case block.Data.Files.source() != "":
+					content = append(content, Block{
+						Image:   "https://ipfs.io/ipfs/" + block.Data.Files.source(),
+						Caption: block.Data.Caption,
+					})
+				}
+			}
+			entry.Content = &content
+		}
+	}
+	return entry, nil
 }

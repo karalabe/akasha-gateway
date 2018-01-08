@@ -7,10 +7,12 @@ import (
 	"math/big"
 	"strings"
 
+	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/event"
 )
 
 // EntriesABI is the input ABI used to generate the binding from.
@@ -20,6 +22,7 @@ const EntriesABI = "[{\"constant\":false,\"inputs\":[{\"name\":\"_essence\",\"ty
 type Entries struct {
 	EntriesCaller     // Read-only binding to the contract
 	EntriesTransactor // Write-only binding to the contract
+	EntriesFilterer   // Log filterer for contract events
 }
 
 // EntriesCaller is an auto generated read-only Go binding around an Ethereum contract.
@@ -29,6 +32,11 @@ type EntriesCaller struct {
 
 // EntriesTransactor is an auto generated write-only Go binding around an Ethereum contract.
 type EntriesTransactor struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// EntriesFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
+type EntriesFilterer struct {
 	contract *bind.BoundContract // Generic contract wrapper for the low level calls
 }
 
@@ -71,16 +79,16 @@ type EntriesTransactorRaw struct {
 
 // NewEntries creates a new instance of Entries, bound to a specific deployed contract.
 func NewEntries(address common.Address, backend bind.ContractBackend) (*Entries, error) {
-	contract, err := bindEntries(address, backend, backend)
+	contract, err := bindEntries(address, backend, backend, backend)
 	if err != nil {
 		return nil, err
 	}
-	return &Entries{EntriesCaller: EntriesCaller{contract: contract}, EntriesTransactor: EntriesTransactor{contract: contract}}, nil
+	return &Entries{EntriesCaller: EntriesCaller{contract: contract}, EntriesTransactor: EntriesTransactor{contract: contract}, EntriesFilterer: EntriesFilterer{contract: contract}}, nil
 }
 
 // NewEntriesCaller creates a new read-only instance of Entries, bound to a specific deployed contract.
 func NewEntriesCaller(address common.Address, caller bind.ContractCaller) (*EntriesCaller, error) {
-	contract, err := bindEntries(address, caller, nil)
+	contract, err := bindEntries(address, caller, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -89,20 +97,29 @@ func NewEntriesCaller(address common.Address, caller bind.ContractCaller) (*Entr
 
 // NewEntriesTransactor creates a new write-only instance of Entries, bound to a specific deployed contract.
 func NewEntriesTransactor(address common.Address, transactor bind.ContractTransactor) (*EntriesTransactor, error) {
-	contract, err := bindEntries(address, nil, transactor)
+	contract, err := bindEntries(address, nil, transactor, nil)
 	if err != nil {
 		return nil, err
 	}
 	return &EntriesTransactor{contract: contract}, nil
 }
 
+// NewEntriesFilterer creates a new log filterer instance of Entries, bound to a specific deployed contract.
+func NewEntriesFilterer(address common.Address, filterer bind.ContractFilterer) (*EntriesFilterer, error) {
+	contract, err := bindEntries(address, nil, nil, filterer)
+	if err != nil {
+		return nil, err
+	}
+	return &EntriesFilterer{contract: contract}, nil
+}
+
 // bindEntries binds a generic wrapper to an already deployed contract.
-func bindEntries(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor) (*bind.BoundContract, error) {
+func bindEntries(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
 	parsed, err := abi.JSON(strings.NewReader(EntriesABI))
 	if err != nil {
 		return nil, err
 	}
-	return bind.NewBoundContract(address, parsed, caller, transactor), nil
+	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
 }
 
 // Call invokes the (constant) contract method with params as input values and
@@ -673,4 +690,581 @@ func (_Entries *EntriesSession) TransferOwnership(newOwner common.Address) (*typ
 // Solidity: function transferOwnership(newOwner address) returns()
 func (_Entries *EntriesTransactorSession) TransferOwnership(newOwner common.Address) (*types.Transaction, error) {
 	return _Entries.Contract.TransferOwnership(&_Entries.TransactOpts, newOwner)
+}
+
+// EntriesOwnershipTransferredIterator is returned from FilterOwnershipTransferred and is used to iterate over the raw logs and unpacked data for OwnershipTransferred events raised by the Entries contract.
+type EntriesOwnershipTransferredIterator struct {
+	Event *EntriesOwnershipTransferred // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *EntriesOwnershipTransferredIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(EntriesOwnershipTransferred)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(EntriesOwnershipTransferred)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error retruned any retrieval or parsing error occured during filtering.
+func (it *EntriesOwnershipTransferredIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *EntriesOwnershipTransferredIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// EntriesOwnershipTransferred represents a OwnershipTransferred event raised by the Entries contract.
+type EntriesOwnershipTransferred struct {
+	PreviousOwner common.Address
+	NewOwner      common.Address
+	Raw           types.Log // Blockchain specific contextual infos
+}
+
+// FilterOwnershipTransferred is a free log retrieval operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
+//
+// Solidity: event OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
+func (_Entries *EntriesFilterer) FilterOwnershipTransferred(opts *bind.FilterOpts, previousOwner []common.Address, newOwner []common.Address) (*EntriesOwnershipTransferredIterator, error) {
+
+	var previousOwnerRule []interface{}
+	for _, previousOwnerItem := range previousOwner {
+		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
+	}
+	var newOwnerRule []interface{}
+	for _, newOwnerItem := range newOwner {
+		newOwnerRule = append(newOwnerRule, newOwnerItem)
+	}
+
+	logs, sub, err := _Entries.contract.FilterLogs(opts, "OwnershipTransferred", previousOwnerRule, newOwnerRule)
+	if err != nil {
+		return nil, err
+	}
+	return &EntriesOwnershipTransferredIterator{contract: _Entries.contract, event: "OwnershipTransferred", logs: logs, sub: sub}, nil
+}
+
+// WatchOwnershipTransferred is a free log subscription operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
+//
+// Solidity: event OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
+func (_Entries *EntriesFilterer) WatchOwnershipTransferred(opts *bind.WatchOpts, sink chan<- *EntriesOwnershipTransferred, previousOwner []common.Address, newOwner []common.Address) (event.Subscription, error) {
+
+	var previousOwnerRule []interface{}
+	for _, previousOwnerItem := range previousOwner {
+		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
+	}
+	var newOwnerRule []interface{}
+	for _, newOwnerItem := range newOwner {
+		newOwnerRule = append(newOwnerRule, newOwnerItem)
+	}
+
+	logs, sub, err := _Entries.contract.WatchLogs(opts, "OwnershipTransferred", previousOwnerRule, newOwnerRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(EntriesOwnershipTransferred)
+				if err := _Entries.contract.UnpackLog(event, "OwnershipTransferred", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+		return nil
+	}), nil
+}
+
+// EntriesPublishIterator is returned from FilterPublish and is used to iterate over the raw logs and unpacked data for Publish events raised by the Entries contract.
+type EntriesPublishIterator struct {
+	Event *EntriesPublish // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *EntriesPublishIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(EntriesPublish)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(EntriesPublish)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error retruned any retrieval or parsing error occured during filtering.
+func (it *EntriesPublishIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *EntriesPublishIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// EntriesPublish represents a Publish event raised by the Entries contract.
+type EntriesPublish struct {
+	Author  common.Address
+	EntryId [32]byte
+	Raw     types.Log // Blockchain specific contextual infos
+}
+
+// FilterPublish is a free log retrieval operation binding the contract event 0xac6d015ca4b9b742bdf7acc16fcae54c45052fa461961fa47e75ae6cb182e775.
+//
+// Solidity: event Publish(author indexed address, entryId indexed bytes32)
+func (_Entries *EntriesFilterer) FilterPublish(opts *bind.FilterOpts, author []common.Address, entryId [][32]byte) (*EntriesPublishIterator, error) {
+
+	var authorRule []interface{}
+	for _, authorItem := range author {
+		authorRule = append(authorRule, authorItem)
+	}
+	var entryIdRule []interface{}
+	for _, entryIdItem := range entryId {
+		entryIdRule = append(entryIdRule, entryIdItem)
+	}
+
+	logs, sub, err := _Entries.contract.FilterLogs(opts, "Publish", authorRule, entryIdRule)
+	if err != nil {
+		return nil, err
+	}
+	return &EntriesPublishIterator{contract: _Entries.contract, event: "Publish", logs: logs, sub: sub}, nil
+}
+
+// WatchPublish is a free log subscription operation binding the contract event 0xac6d015ca4b9b742bdf7acc16fcae54c45052fa461961fa47e75ae6cb182e775.
+//
+// Solidity: event Publish(author indexed address, entryId indexed bytes32)
+func (_Entries *EntriesFilterer) WatchPublish(opts *bind.WatchOpts, sink chan<- *EntriesPublish, author []common.Address, entryId [][32]byte) (event.Subscription, error) {
+
+	var authorRule []interface{}
+	for _, authorItem := range author {
+		authorRule = append(authorRule, authorItem)
+	}
+	var entryIdRule []interface{}
+	for _, entryIdItem := range entryId {
+		entryIdRule = append(entryIdRule, entryIdItem)
+	}
+
+	logs, sub, err := _Entries.contract.WatchLogs(opts, "Publish", authorRule, entryIdRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(EntriesPublish)
+				if err := _Entries.contract.UnpackLog(event, "Publish", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+		return nil
+	}), nil
+}
+
+// EntriesTagIndexIterator is returned from FilterTagIndex and is used to iterate over the raw logs and unpacked data for TagIndex events raised by the Entries contract.
+type EntriesTagIndexIterator struct {
+	Event *EntriesTagIndex // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *EntriesTagIndexIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(EntriesTagIndex)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(EntriesTagIndex)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error retruned any retrieval or parsing error occured during filtering.
+func (it *EntriesTagIndexIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *EntriesTagIndexIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// EntriesTagIndex represents a TagIndex event raised by the Entries contract.
+type EntriesTagIndex struct {
+	TagName   [32]byte
+	EntryId   [32]byte
+	EntryType uint8
+	Raw       types.Log // Blockchain specific contextual infos
+}
+
+// FilterTagIndex is a free log retrieval operation binding the contract event 0x7c61ee1955d4d884d26ad3d7b2e7bbccebf672517e391878c03a44a3c3b6526a.
+//
+// Solidity: event TagIndex(tagName indexed bytes32, entryId indexed bytes32, entryType indexed uint8)
+func (_Entries *EntriesFilterer) FilterTagIndex(opts *bind.FilterOpts, tagName [][32]byte, entryId [][32]byte, entryType []uint8) (*EntriesTagIndexIterator, error) {
+
+	var tagNameRule []interface{}
+	for _, tagNameItem := range tagName {
+		tagNameRule = append(tagNameRule, tagNameItem)
+	}
+	var entryIdRule []interface{}
+	for _, entryIdItem := range entryId {
+		entryIdRule = append(entryIdRule, entryIdItem)
+	}
+	var entryTypeRule []interface{}
+	for _, entryTypeItem := range entryType {
+		entryTypeRule = append(entryTypeRule, entryTypeItem)
+	}
+
+	logs, sub, err := _Entries.contract.FilterLogs(opts, "TagIndex", tagNameRule, entryIdRule, entryTypeRule)
+	if err != nil {
+		return nil, err
+	}
+	return &EntriesTagIndexIterator{contract: _Entries.contract, event: "TagIndex", logs: logs, sub: sub}, nil
+}
+
+// WatchTagIndex is a free log subscription operation binding the contract event 0x7c61ee1955d4d884d26ad3d7b2e7bbccebf672517e391878c03a44a3c3b6526a.
+//
+// Solidity: event TagIndex(tagName indexed bytes32, entryId indexed bytes32, entryType indexed uint8)
+func (_Entries *EntriesFilterer) WatchTagIndex(opts *bind.WatchOpts, sink chan<- *EntriesTagIndex, tagName [][32]byte, entryId [][32]byte, entryType []uint8) (event.Subscription, error) {
+
+	var tagNameRule []interface{}
+	for _, tagNameItem := range tagName {
+		tagNameRule = append(tagNameRule, tagNameItem)
+	}
+	var entryIdRule []interface{}
+	for _, entryIdItem := range entryId {
+		entryIdRule = append(entryIdRule, entryIdItem)
+	}
+	var entryTypeRule []interface{}
+	for _, entryTypeItem := range entryType {
+		entryTypeRule = append(entryTypeRule, entryTypeItem)
+	}
+
+	logs, sub, err := _Entries.contract.WatchLogs(opts, "TagIndex", tagNameRule, entryIdRule, entryTypeRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(EntriesTagIndex)
+				if err := _Entries.contract.UnpackLog(event, "TagIndex", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+		return nil
+	}), nil
+}
+
+// EntriesUpdateIterator is returned from FilterUpdate and is used to iterate over the raw logs and unpacked data for Update events raised by the Entries contract.
+type EntriesUpdateIterator struct {
+	Event *EntriesUpdate // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *EntriesUpdateIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(EntriesUpdate)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(EntriesUpdate)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error retruned any retrieval or parsing error occured during filtering.
+func (it *EntriesUpdateIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *EntriesUpdateIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// EntriesUpdate represents a Update event raised by the Entries contract.
+type EntriesUpdate struct {
+	Author  common.Address
+	EntryId [32]byte
+	Raw     types.Log // Blockchain specific contextual infos
+}
+
+// FilterUpdate is a free log retrieval operation binding the contract event 0xc270eb3f985f34bb5584f38c55f673923cda3c6529ffad6f711e691078ead909.
+//
+// Solidity: event Update(author indexed address, entryId indexed bytes32)
+func (_Entries *EntriesFilterer) FilterUpdate(opts *bind.FilterOpts, author []common.Address, entryId [][32]byte) (*EntriesUpdateIterator, error) {
+
+	var authorRule []interface{}
+	for _, authorItem := range author {
+		authorRule = append(authorRule, authorItem)
+	}
+	var entryIdRule []interface{}
+	for _, entryIdItem := range entryId {
+		entryIdRule = append(entryIdRule, entryIdItem)
+	}
+
+	logs, sub, err := _Entries.contract.FilterLogs(opts, "Update", authorRule, entryIdRule)
+	if err != nil {
+		return nil, err
+	}
+	return &EntriesUpdateIterator{contract: _Entries.contract, event: "Update", logs: logs, sub: sub}, nil
+}
+
+// WatchUpdate is a free log subscription operation binding the contract event 0xc270eb3f985f34bb5584f38c55f673923cda3c6529ffad6f711e691078ead909.
+//
+// Solidity: event Update(author indexed address, entryId indexed bytes32)
+func (_Entries *EntriesFilterer) WatchUpdate(opts *bind.WatchOpts, sink chan<- *EntriesUpdate, author []common.Address, entryId [][32]byte) (event.Subscription, error) {
+
+	var authorRule []interface{}
+	for _, authorItem := range author {
+		authorRule = append(authorRule, authorItem)
+	}
+	var entryIdRule []interface{}
+	for _, entryIdItem := range entryId {
+		entryIdRule = append(entryIdRule, entryIdItem)
+	}
+
+	logs, sub, err := _Entries.contract.WatchLogs(opts, "Update", authorRule, entryIdRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(EntriesUpdate)
+				if err := _Entries.contract.UnpackLog(event, "Update", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+		return nil
+	}), nil
 }

@@ -7,10 +7,12 @@ import (
 	"math/big"
 	"strings"
 
+	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/event"
 )
 
 // ProfileRegistrarABI is the input ABI used to generate the binding from.
@@ -20,6 +22,7 @@ const ProfileRegistrarABI = "[{\"constant\":false,\"inputs\":[{\"name\":\"token\
 type ProfileRegistrar struct {
 	ProfileRegistrarCaller     // Read-only binding to the contract
 	ProfileRegistrarTransactor // Write-only binding to the contract
+	ProfileRegistrarFilterer   // Log filterer for contract events
 }
 
 // ProfileRegistrarCaller is an auto generated read-only Go binding around an Ethereum contract.
@@ -29,6 +32,11 @@ type ProfileRegistrarCaller struct {
 
 // ProfileRegistrarTransactor is an auto generated write-only Go binding around an Ethereum contract.
 type ProfileRegistrarTransactor struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// ProfileRegistrarFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
+type ProfileRegistrarFilterer struct {
 	contract *bind.BoundContract // Generic contract wrapper for the low level calls
 }
 
@@ -71,16 +79,16 @@ type ProfileRegistrarTransactorRaw struct {
 
 // NewProfileRegistrar creates a new instance of ProfileRegistrar, bound to a specific deployed contract.
 func NewProfileRegistrar(address common.Address, backend bind.ContractBackend) (*ProfileRegistrar, error) {
-	contract, err := bindProfileRegistrar(address, backend, backend)
+	contract, err := bindProfileRegistrar(address, backend, backend, backend)
 	if err != nil {
 		return nil, err
 	}
-	return &ProfileRegistrar{ProfileRegistrarCaller: ProfileRegistrarCaller{contract: contract}, ProfileRegistrarTransactor: ProfileRegistrarTransactor{contract: contract}}, nil
+	return &ProfileRegistrar{ProfileRegistrarCaller: ProfileRegistrarCaller{contract: contract}, ProfileRegistrarTransactor: ProfileRegistrarTransactor{contract: contract}, ProfileRegistrarFilterer: ProfileRegistrarFilterer{contract: contract}}, nil
 }
 
 // NewProfileRegistrarCaller creates a new read-only instance of ProfileRegistrar, bound to a specific deployed contract.
 func NewProfileRegistrarCaller(address common.Address, caller bind.ContractCaller) (*ProfileRegistrarCaller, error) {
-	contract, err := bindProfileRegistrar(address, caller, nil)
+	contract, err := bindProfileRegistrar(address, caller, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -89,20 +97,29 @@ func NewProfileRegistrarCaller(address common.Address, caller bind.ContractCalle
 
 // NewProfileRegistrarTransactor creates a new write-only instance of ProfileRegistrar, bound to a specific deployed contract.
 func NewProfileRegistrarTransactor(address common.Address, transactor bind.ContractTransactor) (*ProfileRegistrarTransactor, error) {
-	contract, err := bindProfileRegistrar(address, nil, transactor)
+	contract, err := bindProfileRegistrar(address, nil, transactor, nil)
 	if err != nil {
 		return nil, err
 	}
 	return &ProfileRegistrarTransactor{contract: contract}, nil
 }
 
+// NewProfileRegistrarFilterer creates a new log filterer instance of ProfileRegistrar, bound to a specific deployed contract.
+func NewProfileRegistrarFilterer(address common.Address, filterer bind.ContractFilterer) (*ProfileRegistrarFilterer, error) {
+	contract, err := bindProfileRegistrar(address, nil, nil, filterer)
+	if err != nil {
+		return nil, err
+	}
+	return &ProfileRegistrarFilterer{contract: contract}, nil
+}
+
 // bindProfileRegistrar binds a generic wrapper to an already deployed contract.
-func bindProfileRegistrar(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor) (*bind.BoundContract, error) {
+func bindProfileRegistrar(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
 	parsed, err := abi.JSON(strings.NewReader(ProfileRegistrarABI))
 	if err != nil {
 		return nil, err
 	}
-	return bind.NewBoundContract(address, parsed, caller, transactor), nil
+	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
 }
 
 // Call invokes the (constant) contract method with params as input values and
@@ -575,4 +592,288 @@ func (_ProfileRegistrar *ProfileRegistrarSession) TransferOwnership(newOwner com
 // Solidity: function transferOwnership(newOwner address) returns()
 func (_ProfileRegistrar *ProfileRegistrarTransactorSession) TransferOwnership(newOwner common.Address) (*types.Transaction, error) {
 	return _ProfileRegistrar.Contract.TransferOwnership(&_ProfileRegistrar.TransactOpts, newOwner)
+}
+
+// ProfileRegistrarOwnershipTransferredIterator is returned from FilterOwnershipTransferred and is used to iterate over the raw logs and unpacked data for OwnershipTransferred events raised by the ProfileRegistrar contract.
+type ProfileRegistrarOwnershipTransferredIterator struct {
+	Event *ProfileRegistrarOwnershipTransferred // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *ProfileRegistrarOwnershipTransferredIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(ProfileRegistrarOwnershipTransferred)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(ProfileRegistrarOwnershipTransferred)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error retruned any retrieval or parsing error occured during filtering.
+func (it *ProfileRegistrarOwnershipTransferredIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *ProfileRegistrarOwnershipTransferredIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// ProfileRegistrarOwnershipTransferred represents a OwnershipTransferred event raised by the ProfileRegistrar contract.
+type ProfileRegistrarOwnershipTransferred struct {
+	PreviousOwner common.Address
+	NewOwner      common.Address
+	Raw           types.Log // Blockchain specific contextual infos
+}
+
+// FilterOwnershipTransferred is a free log retrieval operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
+//
+// Solidity: event OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
+func (_ProfileRegistrar *ProfileRegistrarFilterer) FilterOwnershipTransferred(opts *bind.FilterOpts, previousOwner []common.Address, newOwner []common.Address) (*ProfileRegistrarOwnershipTransferredIterator, error) {
+
+	var previousOwnerRule []interface{}
+	for _, previousOwnerItem := range previousOwner {
+		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
+	}
+	var newOwnerRule []interface{}
+	for _, newOwnerItem := range newOwner {
+		newOwnerRule = append(newOwnerRule, newOwnerItem)
+	}
+
+	logs, sub, err := _ProfileRegistrar.contract.FilterLogs(opts, "OwnershipTransferred", previousOwnerRule, newOwnerRule)
+	if err != nil {
+		return nil, err
+	}
+	return &ProfileRegistrarOwnershipTransferredIterator{contract: _ProfileRegistrar.contract, event: "OwnershipTransferred", logs: logs, sub: sub}, nil
+}
+
+// WatchOwnershipTransferred is a free log subscription operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
+//
+// Solidity: event OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
+func (_ProfileRegistrar *ProfileRegistrarFilterer) WatchOwnershipTransferred(opts *bind.WatchOpts, sink chan<- *ProfileRegistrarOwnershipTransferred, previousOwner []common.Address, newOwner []common.Address) (event.Subscription, error) {
+
+	var previousOwnerRule []interface{}
+	for _, previousOwnerItem := range previousOwner {
+		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
+	}
+	var newOwnerRule []interface{}
+	for _, newOwnerItem := range newOwner {
+		newOwnerRule = append(newOwnerRule, newOwnerItem)
+	}
+
+	logs, sub, err := _ProfileRegistrar.contract.WatchLogs(opts, "OwnershipTransferred", previousOwnerRule, newOwnerRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(ProfileRegistrarOwnershipTransferred)
+				if err := _ProfileRegistrar.contract.UnpackLog(event, "OwnershipTransferred", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+		return nil
+	}), nil
+}
+
+// ProfileRegistrarRegisterIterator is returned from FilterRegister and is used to iterate over the raw logs and unpacked data for Register events raised by the ProfileRegistrar contract.
+type ProfileRegistrarRegisterIterator struct {
+	Event *ProfileRegistrarRegister // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *ProfileRegistrarRegisterIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(ProfileRegistrarRegister)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(ProfileRegistrarRegister)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error retruned any retrieval or parsing error occured during filtering.
+func (it *ProfileRegistrarRegisterIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *ProfileRegistrarRegisterIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// ProfileRegistrarRegister represents a Register event raised by the ProfileRegistrar contract.
+type ProfileRegistrarRegister struct {
+	Label   [32]byte
+	Version *big.Int
+	Raw     types.Log // Blockchain specific contextual infos
+}
+
+// FilterRegister is a free log retrieval operation binding the contract event 0xd5fa0e9a716b3ec4895a48223ad309e2d3fa5e27f04d8dc9b3c33cc738a50eb0.
+//
+// Solidity: event Register(label indexed bytes32, version indexed uint256)
+func (_ProfileRegistrar *ProfileRegistrarFilterer) FilterRegister(opts *bind.FilterOpts, label [][32]byte, version []*big.Int) (*ProfileRegistrarRegisterIterator, error) {
+
+	var labelRule []interface{}
+	for _, labelItem := range label {
+		labelRule = append(labelRule, labelItem)
+	}
+	var versionRule []interface{}
+	for _, versionItem := range version {
+		versionRule = append(versionRule, versionItem)
+	}
+
+	logs, sub, err := _ProfileRegistrar.contract.FilterLogs(opts, "Register", labelRule, versionRule)
+	if err != nil {
+		return nil, err
+	}
+	return &ProfileRegistrarRegisterIterator{contract: _ProfileRegistrar.contract, event: "Register", logs: logs, sub: sub}, nil
+}
+
+// WatchRegister is a free log subscription operation binding the contract event 0xd5fa0e9a716b3ec4895a48223ad309e2d3fa5e27f04d8dc9b3c33cc738a50eb0.
+//
+// Solidity: event Register(label indexed bytes32, version indexed uint256)
+func (_ProfileRegistrar *ProfileRegistrarFilterer) WatchRegister(opts *bind.WatchOpts, sink chan<- *ProfileRegistrarRegister, label [][32]byte, version []*big.Int) (event.Subscription, error) {
+
+	var labelRule []interface{}
+	for _, labelItem := range label {
+		labelRule = append(labelRule, labelItem)
+	}
+	var versionRule []interface{}
+	for _, versionItem := range version {
+		versionRule = append(versionRule, versionItem)
+	}
+
+	logs, sub, err := _ProfileRegistrar.contract.WatchLogs(opts, "Register", labelRule, versionRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(ProfileRegistrarRegister)
+				if err := _ProfileRegistrar.contract.UnpackLog(event, "Register", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+		return nil
+	}), nil
 }

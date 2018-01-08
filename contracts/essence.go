@@ -7,10 +7,12 @@ import (
 	"math/big"
 	"strings"
 
+	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/event"
 )
 
 // EssenceABI is the input ABI used to generate the binding from.
@@ -20,6 +22,7 @@ const EssenceABI = "[{\"constant\":false,\"inputs\":[{\"name\":\"_receiver\",\"t
 type Essence struct {
 	EssenceCaller     // Read-only binding to the contract
 	EssenceTransactor // Write-only binding to the contract
+	EssenceFilterer   // Log filterer for contract events
 }
 
 // EssenceCaller is an auto generated read-only Go binding around an Ethereum contract.
@@ -29,6 +32,11 @@ type EssenceCaller struct {
 
 // EssenceTransactor is an auto generated write-only Go binding around an Ethereum contract.
 type EssenceTransactor struct {
+	contract *bind.BoundContract // Generic contract wrapper for the low level calls
+}
+
+// EssenceFilterer is an auto generated log filtering Go binding around an Ethereum contract events.
+type EssenceFilterer struct {
 	contract *bind.BoundContract // Generic contract wrapper for the low level calls
 }
 
@@ -71,16 +79,16 @@ type EssenceTransactorRaw struct {
 
 // NewEssence creates a new instance of Essence, bound to a specific deployed contract.
 func NewEssence(address common.Address, backend bind.ContractBackend) (*Essence, error) {
-	contract, err := bindEssence(address, backend, backend)
+	contract, err := bindEssence(address, backend, backend, backend)
 	if err != nil {
 		return nil, err
 	}
-	return &Essence{EssenceCaller: EssenceCaller{contract: contract}, EssenceTransactor: EssenceTransactor{contract: contract}}, nil
+	return &Essence{EssenceCaller: EssenceCaller{contract: contract}, EssenceTransactor: EssenceTransactor{contract: contract}, EssenceFilterer: EssenceFilterer{contract: contract}}, nil
 }
 
 // NewEssenceCaller creates a new read-only instance of Essence, bound to a specific deployed contract.
 func NewEssenceCaller(address common.Address, caller bind.ContractCaller) (*EssenceCaller, error) {
-	contract, err := bindEssence(address, caller, nil)
+	contract, err := bindEssence(address, caller, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -89,20 +97,29 @@ func NewEssenceCaller(address common.Address, caller bind.ContractCaller) (*Esse
 
 // NewEssenceTransactor creates a new write-only instance of Essence, bound to a specific deployed contract.
 func NewEssenceTransactor(address common.Address, transactor bind.ContractTransactor) (*EssenceTransactor, error) {
-	contract, err := bindEssence(address, nil, transactor)
+	contract, err := bindEssence(address, nil, transactor, nil)
 	if err != nil {
 		return nil, err
 	}
 	return &EssenceTransactor{contract: contract}, nil
 }
 
+// NewEssenceFilterer creates a new log filterer instance of Essence, bound to a specific deployed contract.
+func NewEssenceFilterer(address common.Address, filterer bind.ContractFilterer) (*EssenceFilterer, error) {
+	contract, err := bindEssence(address, nil, nil, filterer)
+	if err != nil {
+		return nil, err
+	}
+	return &EssenceFilterer{contract: contract}, nil
+}
+
 // bindEssence binds a generic wrapper to an already deployed contract.
-func bindEssence(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor) (*bind.BoundContract, error) {
+func bindEssence(address common.Address, caller bind.ContractCaller, transactor bind.ContractTransactor, filterer bind.ContractFilterer) (*bind.BoundContract, error) {
 	parsed, err := abi.JSON(strings.NewReader(EssenceABI))
 	if err != nil {
 		return nil, err
 	}
-	return bind.NewBoundContract(address, parsed, caller, transactor), nil
+	return bind.NewBoundContract(address, parsed, caller, transactor, filterer), nil
 }
 
 // Call invokes the (constant) contract method with params as input values and
@@ -594,4 +611,686 @@ func (_Essence *EssenceSession) TransformEssence(_amount *big.Int) (*types.Trans
 // Solidity: function transformEssence(_amount uint256) returns(bool)
 func (_Essence *EssenceTransactorSession) TransformEssence(_amount *big.Int) (*types.Transaction, error) {
 	return _Essence.Contract.TransformEssence(&_Essence.TransactOpts, _amount)
+}
+
+// EssenceCollectEssenceIterator is returned from FilterCollectEssence and is used to iterate over the raw logs and unpacked data for CollectEssence events raised by the Essence contract.
+type EssenceCollectEssenceIterator struct {
+	Event *EssenceCollectEssence // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *EssenceCollectEssenceIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(EssenceCollectEssence)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(EssenceCollectEssence)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error retruned any retrieval or parsing error occured during filtering.
+func (it *EssenceCollectEssenceIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *EssenceCollectEssenceIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// EssenceCollectEssence represents a CollectEssence event raised by the Essence contract.
+type EssenceCollectEssence struct {
+	Receiver common.Address
+	Amount   *big.Int
+	Total    *big.Int
+	Action   [32]byte
+	Source   [32]byte
+	Raw      types.Log // Blockchain specific contextual infos
+}
+
+// FilterCollectEssence is a free log retrieval operation binding the contract event 0x7bf2a68d3717eedd1adc78ed92ff8b45d2482de3930c5091ea3176bd932e772b.
+//
+// Solidity: event CollectEssence(receiver indexed address, amount uint256, total uint256, action bytes32, source bytes32)
+func (_Essence *EssenceFilterer) FilterCollectEssence(opts *bind.FilterOpts, receiver []common.Address) (*EssenceCollectEssenceIterator, error) {
+
+	var receiverRule []interface{}
+	for _, receiverItem := range receiver {
+		receiverRule = append(receiverRule, receiverItem)
+	}
+
+	logs, sub, err := _Essence.contract.FilterLogs(opts, "CollectEssence", receiverRule)
+	if err != nil {
+		return nil, err
+	}
+	return &EssenceCollectEssenceIterator{contract: _Essence.contract, event: "CollectEssence", logs: logs, sub: sub}, nil
+}
+
+// WatchCollectEssence is a free log subscription operation binding the contract event 0x7bf2a68d3717eedd1adc78ed92ff8b45d2482de3930c5091ea3176bd932e772b.
+//
+// Solidity: event CollectEssence(receiver indexed address, amount uint256, total uint256, action bytes32, source bytes32)
+func (_Essence *EssenceFilterer) WatchCollectEssence(opts *bind.WatchOpts, sink chan<- *EssenceCollectEssence, receiver []common.Address) (event.Subscription, error) {
+
+	var receiverRule []interface{}
+	for _, receiverItem := range receiver {
+		receiverRule = append(receiverRule, receiverItem)
+	}
+
+	logs, sub, err := _Essence.contract.WatchLogs(opts, "CollectEssence", receiverRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(EssenceCollectEssence)
+				if err := _Essence.contract.UnpackLog(event, "CollectEssence", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+		return nil
+	}), nil
+}
+
+// EssenceConvertEssenceIterator is returned from FilterConvertEssence and is used to iterate over the raw logs and unpacked data for ConvertEssence events raised by the Essence contract.
+type EssenceConvertEssenceIterator struct {
+	Event *EssenceConvertEssence // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *EssenceConvertEssenceIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(EssenceConvertEssence)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(EssenceConvertEssence)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error retruned any retrieval or parsing error occured during filtering.
+func (it *EssenceConvertEssenceIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *EssenceConvertEssenceIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// EssenceConvertEssence represents a ConvertEssence event raised by the Essence contract.
+type EssenceConvertEssence struct {
+	Spender common.Address
+	Amount  *big.Int
+	Raw     types.Log // Blockchain specific contextual infos
+}
+
+// FilterConvertEssence is a free log retrieval operation binding the contract event 0x0662a42659d411be6c61ba781758c0bdf87eadf1000e86a5fa2f077574e9c81b.
+//
+// Solidity: event ConvertEssence(spender indexed address, amount uint256)
+func (_Essence *EssenceFilterer) FilterConvertEssence(opts *bind.FilterOpts, spender []common.Address) (*EssenceConvertEssenceIterator, error) {
+
+	var spenderRule []interface{}
+	for _, spenderItem := range spender {
+		spenderRule = append(spenderRule, spenderItem)
+	}
+
+	logs, sub, err := _Essence.contract.FilterLogs(opts, "ConvertEssence", spenderRule)
+	if err != nil {
+		return nil, err
+	}
+	return &EssenceConvertEssenceIterator{contract: _Essence.contract, event: "ConvertEssence", logs: logs, sub: sub}, nil
+}
+
+// WatchConvertEssence is a free log subscription operation binding the contract event 0x0662a42659d411be6c61ba781758c0bdf87eadf1000e86a5fa2f077574e9c81b.
+//
+// Solidity: event ConvertEssence(spender indexed address, amount uint256)
+func (_Essence *EssenceFilterer) WatchConvertEssence(opts *bind.WatchOpts, sink chan<- *EssenceConvertEssence, spender []common.Address) (event.Subscription, error) {
+
+	var spenderRule []interface{}
+	for _, spenderItem := range spender {
+		spenderRule = append(spenderRule, spenderItem)
+	}
+
+	logs, sub, err := _Essence.contract.WatchLogs(opts, "ConvertEssence", spenderRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(EssenceConvertEssence)
+				if err := _Essence.contract.UnpackLog(event, "ConvertEssence", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+		return nil
+	}), nil
+}
+
+// EssenceOwnershipTransferredIterator is returned from FilterOwnershipTransferred and is used to iterate over the raw logs and unpacked data for OwnershipTransferred events raised by the Essence contract.
+type EssenceOwnershipTransferredIterator struct {
+	Event *EssenceOwnershipTransferred // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *EssenceOwnershipTransferredIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(EssenceOwnershipTransferred)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(EssenceOwnershipTransferred)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error retruned any retrieval or parsing error occured during filtering.
+func (it *EssenceOwnershipTransferredIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *EssenceOwnershipTransferredIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// EssenceOwnershipTransferred represents a OwnershipTransferred event raised by the Essence contract.
+type EssenceOwnershipTransferred struct {
+	PreviousOwner common.Address
+	NewOwner      common.Address
+	Raw           types.Log // Blockchain specific contextual infos
+}
+
+// FilterOwnershipTransferred is a free log retrieval operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
+//
+// Solidity: event OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
+func (_Essence *EssenceFilterer) FilterOwnershipTransferred(opts *bind.FilterOpts, previousOwner []common.Address, newOwner []common.Address) (*EssenceOwnershipTransferredIterator, error) {
+
+	var previousOwnerRule []interface{}
+	for _, previousOwnerItem := range previousOwner {
+		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
+	}
+	var newOwnerRule []interface{}
+	for _, newOwnerItem := range newOwner {
+		newOwnerRule = append(newOwnerRule, newOwnerItem)
+	}
+
+	logs, sub, err := _Essence.contract.FilterLogs(opts, "OwnershipTransferred", previousOwnerRule, newOwnerRule)
+	if err != nil {
+		return nil, err
+	}
+	return &EssenceOwnershipTransferredIterator{contract: _Essence.contract, event: "OwnershipTransferred", logs: logs, sub: sub}, nil
+}
+
+// WatchOwnershipTransferred is a free log subscription operation binding the contract event 0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0.
+//
+// Solidity: event OwnershipTransferred(previousOwner indexed address, newOwner indexed address)
+func (_Essence *EssenceFilterer) WatchOwnershipTransferred(opts *bind.WatchOpts, sink chan<- *EssenceOwnershipTransferred, previousOwner []common.Address, newOwner []common.Address) (event.Subscription, error) {
+
+	var previousOwnerRule []interface{}
+	for _, previousOwnerItem := range previousOwner {
+		previousOwnerRule = append(previousOwnerRule, previousOwnerItem)
+	}
+	var newOwnerRule []interface{}
+	for _, newOwnerItem := range newOwner {
+		newOwnerRule = append(newOwnerRule, newOwnerItem)
+	}
+
+	logs, sub, err := _Essence.contract.WatchLogs(opts, "OwnershipTransferred", previousOwnerRule, newOwnerRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(EssenceOwnershipTransferred)
+				if err := _Essence.contract.UnpackLog(event, "OwnershipTransferred", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+		return nil
+	}), nil
+}
+
+// EssenceRefreshManaIterator is returned from FilterRefreshMana and is used to iterate over the raw logs and unpacked data for RefreshMana events raised by the Essence contract.
+type EssenceRefreshManaIterator struct {
+	Event *EssenceRefreshMana // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *EssenceRefreshManaIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(EssenceRefreshMana)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(EssenceRefreshMana)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error retruned any retrieval or parsing error occured during filtering.
+func (it *EssenceRefreshManaIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *EssenceRefreshManaIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// EssenceRefreshMana represents a RefreshMana event raised by the Essence contract.
+type EssenceRefreshMana struct {
+	NewHash     [32]byte
+	TotalToMint *big.Int
+	Raw         types.Log // Blockchain specific contextual infos
+}
+
+// FilterRefreshMana is a free log retrieval operation binding the contract event 0xe6261c9c46042bfdc7d26945b543955a34bc0c00e01be5655ba202e7c72380da.
+//
+// Solidity: event RefreshMana(newHash bytes32, totalToMint uint256)
+func (_Essence *EssenceFilterer) FilterRefreshMana(opts *bind.FilterOpts) (*EssenceRefreshManaIterator, error) {
+
+	logs, sub, err := _Essence.contract.FilterLogs(opts, "RefreshMana")
+	if err != nil {
+		return nil, err
+	}
+	return &EssenceRefreshManaIterator{contract: _Essence.contract, event: "RefreshMana", logs: logs, sub: sub}, nil
+}
+
+// WatchRefreshMana is a free log subscription operation binding the contract event 0xe6261c9c46042bfdc7d26945b543955a34bc0c00e01be5655ba202e7c72380da.
+//
+// Solidity: event RefreshMana(newHash bytes32, totalToMint uint256)
+func (_Essence *EssenceFilterer) WatchRefreshMana(opts *bind.WatchOpts, sink chan<- *EssenceRefreshMana) (event.Subscription, error) {
+
+	logs, sub, err := _Essence.contract.WatchLogs(opts, "RefreshMana")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(EssenceRefreshMana)
+				if err := _Essence.contract.UnpackLog(event, "RefreshMana", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+		return nil
+	}), nil
+}
+
+// EssenceSpendManaIterator is returned from FilterSpendMana and is used to iterate over the raw logs and unpacked data for SpendMana events raised by the Essence contract.
+type EssenceSpendManaIterator struct {
+	Event *EssenceSpendMana // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *EssenceSpendManaIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(EssenceSpendMana)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(EssenceSpendMana)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error retruned any retrieval or parsing error occured during filtering.
+func (it *EssenceSpendManaIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *EssenceSpendManaIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// EssenceSpendMana represents a SpendMana event raised by the Essence contract.
+type EssenceSpendMana struct {
+	Spender common.Address
+	Hash    [32]byte
+	Amount  *big.Int
+	Total   *big.Int
+	Scope   [32]byte
+	Raw     types.Log // Blockchain specific contextual infos
+}
+
+// FilterSpendMana is a free log retrieval operation binding the contract event 0x9c0ddb014a6cabfb3a9259f06a467fab3202af5d0c134145b01d2b37498cdce4.
+//
+// Solidity: event SpendMana(spender indexed address, hash indexed bytes32, amount uint256, total uint256, scope bytes32)
+func (_Essence *EssenceFilterer) FilterSpendMana(opts *bind.FilterOpts, spender []common.Address, hash [][32]byte) (*EssenceSpendManaIterator, error) {
+
+	var spenderRule []interface{}
+	for _, spenderItem := range spender {
+		spenderRule = append(spenderRule, spenderItem)
+	}
+	var hashRule []interface{}
+	for _, hashItem := range hash {
+		hashRule = append(hashRule, hashItem)
+	}
+
+	logs, sub, err := _Essence.contract.FilterLogs(opts, "SpendMana", spenderRule, hashRule)
+	if err != nil {
+		return nil, err
+	}
+	return &EssenceSpendManaIterator{contract: _Essence.contract, event: "SpendMana", logs: logs, sub: sub}, nil
+}
+
+// WatchSpendMana is a free log subscription operation binding the contract event 0x9c0ddb014a6cabfb3a9259f06a467fab3202af5d0c134145b01d2b37498cdce4.
+//
+// Solidity: event SpendMana(spender indexed address, hash indexed bytes32, amount uint256, total uint256, scope bytes32)
+func (_Essence *EssenceFilterer) WatchSpendMana(opts *bind.WatchOpts, sink chan<- *EssenceSpendMana, spender []common.Address, hash [][32]byte) (event.Subscription, error) {
+
+	var spenderRule []interface{}
+	for _, spenderItem := range spender {
+		spenderRule = append(spenderRule, spenderItem)
+	}
+	var hashRule []interface{}
+	for _, hashItem := range hash {
+		hashRule = append(hashRule, hashItem)
+	}
+
+	logs, sub, err := _Essence.contract.WatchLogs(opts, "SpendMana", spenderRule, hashRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(EssenceSpendMana)
+				if err := _Essence.contract.UnpackLog(event, "SpendMana", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+		return nil
+	}), nil
 }

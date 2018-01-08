@@ -13,6 +13,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/karalabe/akasha/fdlimit"
 	"github.com/karalabe/akasha/spec"
 	colorable "github.com/mattn/go-colorable"
 )
@@ -24,14 +25,15 @@ var (
 
 	dataFlag = flag.String("data", filepath.Join(os.Getenv("HOME"), ".akasha"), "Data directory to use for Ethereum and IPFS")
 
-	logFlag = flag.Int("log", int(log.LvlInfo), "Log verbosity to use by Ethereum and Akasha")
+	logLevelFlag = flag.Int("loglevel", int(log.LvlInfo), "Log verbosity to use by Ethereum and Akasha")
+	fdLimitFlag  = flag.Int("fdlimit", 2048, "Number of file descriptors to request from the OS")
 )
 
 func main() {
+	// Set up the process for the Akasha API
 	flag.Parse()
-
-	// Configure the logger to print relevant infos
-	log.Root().SetHandler(log.LvlFilterHandler(log.Lvl(*logFlag), log.StreamHandler(colorable.NewColorableStderr(), log.TerminalFormat(true))))
+	fdlimit.Raise(uint64(*fdLimitFlag))
+	log.Root().SetHandler(log.LvlFilterHandler(log.Lvl(*logLevelFlag), log.StreamHandler(colorable.NewColorableStderr(), log.TerminalFormat(true))))
 
 	// Create and boot up the Ethereum node
 	geth, err := makeGeth(*dataFlag)
