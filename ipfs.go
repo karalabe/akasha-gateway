@@ -132,7 +132,7 @@ func (n *ipfs) resolve(ctx context.Context, multihash string) (format.Node, erro
 				defer cancel()
 
 				if _, err := core.Resolve(ctx, n.node.Namesys, n.node.Resolver, path.Path(multihash)); err != nil {
-					log.Warn("Background IPFS resolution failed", "multihash", multihash, "err", err)
+					log.Warn("Background IPFS resolution failed", "multihash", multihash)
 					return
 				}
 				log.Info("Background IPFS resolution succeeded", "multihash", multihash)

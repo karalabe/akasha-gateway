@@ -14,14 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with go-ethereum. If not, see <http://www.gnu.org/licenses/>.
 
-// +build linux darwin netbsd openbsd solaris
+// +build freebsd
 
 package fdlimit
 
 import "syscall"
 
-// Raise tries to maximize the file descriptor allowance of this process to the
-// maximum hard-limit allowed by the OS.
+// This file is largely identical to fdlimit_unix.go,
+// but Rlimit fields have type int64 on FreeBSD so it needs
+// an extra conversion.
+
+// Raise tries to maximize the file descriptor allowance of this process
+// to the maximum hard-limit allowed by the OS.
 func Raise(max uint64) error {
 	// Get the current limit
 	var limit syscall.Rlimit
@@ -30,8 +34,8 @@ func Raise(max uint64) error {
 	}
 	// Try to update the limit to the max allowance
 	limit.Cur = limit.Max
-	if limit.Cur > max {
-		limit.Cur = max
+	if limit.Cur > int64(max) {
+		limit.Cur = int64(max)
 	}
 	if err := syscall.Setrlimit(syscall.RLIMIT_NOFILE, &limit); err != nil {
 		return err
@@ -39,9 +43,9 @@ func Raise(max uint64) error {
 	return nil
 }
 
-// Limit retrieves the number of file descriptors allowed to be opened by this
+// Current retrieves the number of file descriptors allowed to be opened by this
 // process.
-func Limit() (int, error) {
+func Current() (int, error) {
 	var limit syscall.Rlimit
 	if err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &limit); err != nil {
 		return 0, err
@@ -49,9 +53,9 @@ func Limit() (int, error) {
 	return int(limit.Cur), nil
 }
 
-// MaxLimit retrieves the maximum number of file descriptors this process is
+// Maximum retrieves the maximum number of file descriptors this process is
 // allowed to request for itself.
-func MaxLimit() (int, error) {
+func Maximum() (int, error) {
 	var limit syscall.Rlimit
 	if err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &limit); err != nil {
 		return 0, err

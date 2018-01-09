@@ -476,3 +476,41 @@ func (a *akasha) entry(event *contracts.EntriesPublish, timeout time.Duration) (
 	}
 	return entry, nil
 }
+
+// Prefetch starts a background process to monitor the Ethereum chain for Akasha
+// contract events and prefetch any IPFS resources when they are published.
+func (a *akasha) Prefetch() error {
+	// Start a prefetcher for entry publishes
+	pubs := make(chan *contracts.EntriesPublish, 128)
+
+	pubSub, err := a.entries.WatchPublish(nil, pubs, nil, nil)
+	if err != nil {
+		return err
+	}
+	go func() {
+		defer pubSub.Unsubscribe()
+		for {
+			select {
+			case event := <-pubs:
+				// Notification arrived for new entry in Akasha, prefetch it
+				log.Info("Prefetching new entry", "author", event.Author, "entry", common.Hash(event.EntryId))
+
+				go func() {
+					entry, err := a.entry(event, 15*time.Second)
+					switch {
+					case err != nil:
+						log.Error("Failed to prefetch published entry", "author", event.Author, "entry", common.Hash(event.EntryId), "err", err)
+					case entry.Content == nil:
+						log.Warn("Failed to prefetch published entry", "author", event.Author, "entry", common.Hash(event.EntryId))
+					default:
+						log.Info("Prefetched new entry", "author", event.Author, "entry", common.Hash(event.EntryId), "title", *entry.Title)
+					}
+				}()
+			case err := <-pubSub.Err():
+				log.Error("Publish event watch failed: %v", err)
+				return
+			}
+		}
+	}()
+	return nil
+}

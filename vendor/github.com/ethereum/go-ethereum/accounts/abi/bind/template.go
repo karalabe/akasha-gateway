@@ -340,7 +340,7 @@ package {{.Package}}
 				return it.Next()
 			}
 		}
-		// Error retruned any retrieval or parsing error occured during filtering.
+		// Error retruned any retrieval or parsing error occurred during filtering.
 		func (it *{{$contract.Type}}{{.Normalized.Name}}Iterator) Error() error {
 			return it.fail
 		}
@@ -413,7 +413,6 @@ package {{.Package}}
 						return nil
 					}
 				}
-				return nil
 			}), nil
 		}
  	{{end}}

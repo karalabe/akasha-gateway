@@ -245,7 +245,7 @@ func (c *BoundContract) transact(opts *TransactOpts, contract *common.Address, i
 }
 
 // FilterLogs filters contract logs for past blocks, returning the necessary
-// channels to construct a strongly types bound iterator on top of them.
+// channels to construct a strongly typed bound iterator on top of them.
 func (c *BoundContract) FilterLogs(opts *FilterOpts, name string, query ...[]interface{}) (chan types.Log, event.Subscription, error) {
 	// Don't crash on a lazy user
 	if opts == nil {

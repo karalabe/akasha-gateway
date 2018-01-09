@@ -84,7 +84,7 @@ type ContractTransactor interface {
 	SendTransaction(ctx context.Context, tx *types.Transaction) error
 }
 
-// ContractFilterer defines the methods needed to accesslog events using a one-off
+// ContractFilterer defines the methods needed to access log events using one-off
 // queries or continuous event subscriptions.
 type ContractFilterer interface {
 	// FilterLogs executes a log filter operation, blocking during execution and

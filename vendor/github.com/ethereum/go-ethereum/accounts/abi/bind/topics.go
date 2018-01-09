@@ -79,7 +79,7 @@ func makeTopics(query ...[]interface{}) ([][]common.Hash, error) {
 				copy(topic[:], hash[:])
 
 			default:
-				// Attempt to generat the topic from funky types
+				// Attempt to generate the topic from funky types
 				val := reflect.ValueOf(rule)
 
 				switch {

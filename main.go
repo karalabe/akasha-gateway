@@ -12,8 +12,8 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/fdlimit"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/karalabe/akasha/fdlimit"
 	"github.com/karalabe/akasha/spec"
 	colorable "github.com/mattn/go-colorable"
 )
@@ -62,6 +62,9 @@ func main() {
 	})
 	if err != nil {
 		log.Crit("Failed to interface Akasha", "err", err)
+	}
+	if err = akasha.Prefetch(); err != nil {
+		log.Crit("Failed to start Akasha prefetcher", "err", err)
 	}
 	// Create the web handler to server the API specs and actual website
 	api, err := makeAPI(akasha, *baseFlag)
