@@ -27,8 +27,9 @@ var (
 
 // akasha represents the interface to the Akasha smart contracts.
 type akasha struct {
-	eth       *ethclient.Client
-	ipfs      *ipfs
+	eth  *ethclient.Client
+	ipfs *ipfs
+
 	aeth      *contracts.AETH
 	essence   *contracts.Essence
 	resolver  *contracts.ProfileResolver
@@ -149,17 +150,17 @@ func (img *image) source() string {
 
 // UserByAddress does a reverse ENS lookup to get the registration node of the
 // user and retrieves all known infos associated with it.
-func (a *akasha) UserByAddress(addr common.Address) (*User, error) {
+func (a *akasha) UserByAddress(addr common.Address, timeout time.Duration) (*User, error) {
 	node, err := a.resolver.Reverse(nil, addr)
 	if err != nil {
 		return nil, err
 	}
-	return a.user(node)
+	return a.user(node, timeout)
 }
 
 // UserByName does an ENS lookup to get the registration node of the user and
 // retrieves all known infos associated with it.
-func (a *akasha) UserByName(name string) (*User, error) {
+func (a *akasha) UserByName(name string, timeout time.Duration) (*User, error) {
 	var label [32]byte
 	copy(label[:], name)
 
@@ -167,11 +168,11 @@ func (a *akasha) UserByName(name string) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
-	return a.user(node)
+	return a.user(node, timeout)
 }
 
 // user retrieves all the known infos about a user identified by it's ENS node.
-func (a *akasha) user(node [32]byte) (*User, error) {
+func (a *akasha) user(node [32]byte, timeout time.Duration) (*User, error) {
 	// Retrieve the profile infos from the profile resolver
 	profile, err := a.resolver.Resolve(nil, node)
 	if err != nil {
@@ -183,7 +184,7 @@ func (a *akasha) user(node [32]byte) (*User, error) {
 	// Retrieve profile details from the IPFS profile objects (failures are fine-ish)
 	root := base58.Encode(append([]byte{profile.Fn, profile.DigestSize}, profile.Hash[:]...))
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	var (
@@ -279,7 +280,7 @@ func (a *akasha) user(node [32]byte) (*User, error) {
 
 // EntriesByAddress retrieves a list of entires posted by a user given its Ethereum
 // address.
-func (a *akasha) EntriesByAddress(addr common.Address) ([]common.Hash, error) {
+func (a *akasha) EntriesByAddress(addr common.Address, timeout time.Duration) ([]common.Hash, error) {
 	// Filter the Ethereum events for Akasha entry publishes
 	it, err := a.entries.FilterPublish(nil, []common.Address{addr}, nil)
 	if err != nil {
@@ -297,7 +298,7 @@ func (a *akasha) EntriesByAddress(addr common.Address) ([]common.Hash, error) {
 
 // EntriesByName retrieves a list of entires posted by a user given its Akasha
 // username.
-func (a *akasha) EntriesByName(name string) ([]common.Hash, error) {
+func (a *akasha) EntriesByName(name string, timeout time.Duration) ([]common.Hash, error) {
 	// Resolve the user's address from its ID
 	var label [32]byte
 	copy(label[:], name)
@@ -314,7 +315,7 @@ func (a *akasha) EntriesByName(name string) ([]common.Hash, error) {
 		return nil, errUnknownUser
 	}
 	// Retrieve the user's entries using the Ethereum address
-	return a.EntriesByAddress(profile.Addr)
+	return a.EntriesByAddress(profile.Addr, timeout)
 }
 
 // Entry represents all the known information about an Akasha entry. The reason
@@ -339,7 +340,7 @@ type Block struct {
 
 // Entry retrieves all the details about a particular entry any user might have
 // made.
-func (a *akasha) Entry(hash common.Hash) (*Entry, error) {
+func (a *akasha) Entry(hash common.Hash, timeout time.Duration) (*Entry, error) {
 	it, err := a.entries.FilterPublish(nil, nil, [][32]byte{hash})
 	if err != nil {
 		return nil, err
@@ -349,12 +350,12 @@ func (a *akasha) Entry(hash common.Hash) (*Entry, error) {
 	if !it.Next() {
 		return nil, errUnknownEntry
 	}
-	return a.entry(it.Event)
+	return a.entry(it.Event, timeout)
 }
 
 // EntryByAddress retrieves all the details about a particular entry a user made,
 // identified by the user's address and the entry id.
-func (a *akasha) EntryByAddress(addr common.Address, hash common.Hash) (*Entry, error) {
+func (a *akasha) EntryByAddress(addr common.Address, hash common.Hash, timeout time.Duration) (*Entry, error) {
 	it, err := a.entries.FilterPublish(nil, []common.Address{addr}, [][32]byte{hash})
 	if err != nil {
 		return nil, err
@@ -364,12 +365,12 @@ func (a *akasha) EntryByAddress(addr common.Address, hash common.Hash) (*Entry, 
 	if !it.Next() {
 		return nil, errUnknownEntry
 	}
-	return a.entry(it.Event)
+	return a.entry(it.Event, timeout)
 }
 
 // EntryByName retrieves all the details about a particular entry a user made,
 // identified by the user's name and the entry id.
-func (a *akasha) EntryByName(name string, hash common.Hash) (*Entry, error) {
+func (a *akasha) EntryByName(name string, hash common.Hash, timeout time.Duration) (*Entry, error) {
 	// Resolve the user's address from its ID
 	var label [32]byte
 	copy(label[:], name)
@@ -386,12 +387,12 @@ func (a *akasha) EntryByName(name string, hash common.Hash) (*Entry, error) {
 		return nil, errUnknownUser
 	}
 	// Retrieve the user's entry using the Ethereum address
-	return a.EntryByAddress(profile.Addr, hash)
+	return a.EntryByAddress(profile.Addr, hash, timeout)
 }
 
 // entry retrieves all the known details about an Akasha post based on the publish
 // log from the Ethereum contract.
-func (a *akasha) entry(event *contracts.EntriesPublish) (*Entry, error) {
+func (a *akasha) entry(event *contracts.EntriesPublish, timeout time.Duration) (*Entry, error) {
 	// Resolve the IPFS id of the entry
 	post, err := a.entries.GetEntry(nil, event.Author, event.EntryId)
 	if err != nil {
@@ -410,7 +411,7 @@ func (a *akasha) entry(event *contracts.EntriesPublish) (*Entry, error) {
 		Published: time.Unix(header.Time.Int64(), 0),
 	}
 	// Retrieve the components of the entry and resolve the individual contents
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	blob, err := a.ipfs.Content(ctx, id)
@@ -439,6 +440,11 @@ func (a *akasha) entry(event *contracts.EntriesPublish) (*Entry, error) {
 					break
 				}
 				document = append(document, blob...)
+			}
+			select {
+			case <-ctx.Done():
+				return entry, nil
+			default:
 			}
 			// Parse the document and create the list of data blocks
 			var doc struct {

@@ -13,7 +13,6 @@ info:
       * Data content might occasionally be unavailable if the hosting IPFS nodes are offline. To ensure callers are aware that some data is unreachable at endpoint invocation time, the API server will explicitly return `null` for such fields.
 schemes:
   - http
-  - https
 host: "{{.Host}}"
 basePath: "{{.Base}}"
 
@@ -36,6 +35,13 @@ paths:
           required: true
           description: Akasha user or Ethereum address
           type: string
+        - name: timeout
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 60
+          description: Allowance for profile retrival from IPFS
       responses:
         200:
           description: Successful retrieval
@@ -88,6 +94,13 @@ paths:
           description: Unique Akasha entry ID
           type: string
           format: hex hash
+        - name: timeout
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 60
+          description: Allowance for content retrival from IPFS
       responses:
         200:
           description: Successful retrieval
@@ -111,6 +124,13 @@ paths:
           description: Unique Akasha entry ID
           type: string
           format: hex hash
+        - name: timeout
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 60
+          description: Allowance for content retrival from IPFS
       responses:
         200:
           description: Successful retrieval
