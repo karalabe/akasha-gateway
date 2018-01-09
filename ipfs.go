@@ -4,13 +4,17 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"gx/ipfs/QmNwUEK7QbwSqyKBu3mMtToo8SUc6wQJ7gdZq4gGGJqfnf/go-ipld-format"
 	peer "gx/ipfs/QmWNY7dV54ZDYmTA1ykVdwNCqC11mpU4zSUp6XDpLTH9eG/go-libp2p-peer"
 	leveldb "gx/ipfs/QmYnCBXxoyoS38vtNQjjpRwZTiUnpuuKpapxMNaDfyQRLf/go-ds-leveldb"
 	crypto "gx/ipfs/QmaPbCnUMBohSGo3KnxEa2bHqyJVVeEEcwtqJAYxerieBo/go-libp2p-crypto"
 	"gx/ipfs/QmbBhyDKsY4mbY6xsKt3qu9Y7FPvMJ6qbD8AMjYYvPRw1g/goleveldb/leveldb/opt"
-	"gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/sync"
+	dbsync "gx/ipfs/QmdHG8MAuARdGHxx4rPQASLcvhz24fzjSQq7AJRAQEorq5/go-datastore/sync"
 	"path/filepath"
+	"sync"
+	"time"
 
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ipfs/go-ipfs/core"
 	"github.com/ipfs/go-ipfs/merkledag"
 	"github.com/ipfs/go-ipfs/path"
@@ -21,6 +25,9 @@ import (
 // ipfs is a small utilty wrapper around the IPFS library.
 type ipfs struct {
 	node *core.IpfsNode
+
+	pend map[string]struct{}
+	lock sync.Mutex
 }
 
 // makeIpfs assembles a go-ipfs in-process node to interact with the IPFS network.
@@ -49,7 +56,7 @@ func makeIpfs(datadir string) (*ipfs, error) {
 	conf := cfg.Config{
 		Bootstrap: cfg.DefaultBootstrapAddresses,
 	}
-	conf.Addresses.Swarm = []string{"/ip4/0.0.0.0/tcp/0"}
+	conf.Addresses.Swarm = []string{"/ip4/0.0.0.0/tcp/4001"}
 	conf.Identity.PeerID = pid.Pretty()
 	conf.Identity.PrivKey = base64.StdEncoding.EncodeToString(privkeyb)
 
@@ -57,13 +64,14 @@ func makeIpfs(datadir string) (*ipfs, error) {
 	node, err := core.NewNode(context.TODO(), &core.BuildCfg{
 		Online:    true,
 		Permanent: true,
-		Repo:      &repo.Mock{D: sync.MutexWrap(ds), C: conf},
+		Repo:      &repo.Mock{D: dbsync.MutexWrap(ds), C: conf},
 	})
 	if err != nil {
 		return nil, err
 	}
 	return &ipfs{
 		node: node,
+		pend: make(map[string]struct{}),
 	}, nil
 }
 
@@ -74,7 +82,7 @@ func (n *ipfs) Close() error {
 
 // Links retrieves the links gathered together by an IPFS root object.
 func (n *ipfs) Links(ctx context.Context, multihash string) (map[string]string, error) {
-	obj, err := core.Resolve(ctx, n.node.Namesys, n.node.Resolver, path.Path(multihash))
+	obj, err := n.resolve(ctx, multihash)
 	if err != nil {
 		return nil, err
 	}
@@ -87,9 +95,51 @@ func (n *ipfs) Links(ctx context.Context, multihash string) (map[string]string, 
 
 // Content retrieves the raw data content of an IPFS object.
 func (n *ipfs) Content(ctx context.Context, multihash string) ([]byte, error) {
-	obj, err := core.Resolve(ctx, n.node.Namesys, n.node.Resolver, path.Path(multihash))
+	obj, err := n.resolve(ctx, multihash)
 	if err != nil {
 		return nil, err
 	}
 	return obj.(*merkledag.ProtoNode).Data(), nil
+}
+
+// resolve attempts to resolve the requested multihash until the context times out,
+// in case of which it returns an error but starts a longer background resolution.
+func (n *ipfs) resolve(ctx context.Context, multihash string) (format.Node, error) {
+	obj, err := core.Resolve(ctx, n.node.Namesys, n.node.Resolver, path.Path(multihash))
+	if err != nil {
+		select {
+		case <-ctx.Done():
+			// Request timed out, retrieve in the background
+			go func() {
+				// Make sure we only have one pending fetch per resource
+				n.lock.Lock()
+				if _, ok := n.pend[multihash]; ok {
+					n.lock.Unlock()
+					return
+				}
+				n.pend[multihash] = struct{}{}
+				n.lock.Unlock()
+
+				// Make sure we clean up the resource lock
+				defer func() {
+					n.lock.Lock()
+					defer n.lock.Unlock()
+					delete(n.pend, multihash)
+				}()
+
+				// Try to resolve the resource with a significantly larger timeout
+				ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+				defer cancel()
+
+				if _, err := core.Resolve(ctx, n.node.Namesys, n.node.Resolver, path.Path(multihash)); err != nil {
+					log.Warn("Background IPFS resolution failed", "multihash", multihash, "err", err)
+					return
+				}
+				log.Info("Background IPFS resolution succeeded", "multihash", multihash)
+			}()
+		default:
+		}
+		return nil, err
+	}
+	return obj, nil
 }
