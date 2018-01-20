@@ -30,7 +30,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/node"
-	"github.com/karalabe/akasha/contracts"
+	"github.com/karalabe/akasha-gateway/contracts"
 )
 
 var (
