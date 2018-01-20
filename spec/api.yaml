@@ -1,12 +1,33 @@
+# Akasha Gateway - API for legacy (web 2.0) applications
+# Copyright (c) 2018 Péter Szilágyi. All rights reserved.
+#
+# The Akasha gateway is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or (at your
+# option) any later version.
+#
+# The Akasha gateway is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public
+# License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with the Akasha gateway. If not, see <http://www.gnu.org/licenses/>.
+
 swagger: "2.0"
 
 info:
-  title: Akasha World
+  title: Akasha Gateway
   version: beta
   contact:
-    email: "Péter Szilágyi <peterke@gmail.com>"
+    name: Péter Szilágyi
+    email: Péter Szilágyi <peterke@gmail.com>
+    url: https://github.com/karalabe/akasha-gateway
+  license:
+    name: LGPL-3.0
+    url: https://www.gnu.org/licenses/lgpl-3.0.txt
   description: |
-    Restful HTTP API for the Akasha decentralized social network.
+    Restful HTTP API for the Akasha decentralized social network. [Fork me!](https://github.com/karalabe/akasha-gateway)
 
     It is important to be aware that all information returned by the Akasha API is gathered from decentralized networks (Ethereum and IPFS). This has important consequences callers need to be aware of:
       * Returned information is only as recent as the latest Ethereum block processed by the API server. To avoid callers acting on potentially stale data, the API server will always return a timestamp for every request, corresponding to the latest Ethereum block's timestamp.
