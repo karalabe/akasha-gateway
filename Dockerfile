@@ -12,5 +12,5 @@ FROM alpine:latest
 RUN apk add --no-cache ca-certificates
 COPY --from=builder /go/bin/akasha-gateway /usr/local/bin/
 
-EXPOSE 80 30303 30303/udp
-ENTRYPOINT ["akasha-gateway", "-port", "80"]
+EXPOSE 8080 30303 30303/udp
+ENTRYPOINT ["akasha-gateway"]
