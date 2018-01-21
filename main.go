@@ -24,6 +24,7 @@ import (
 	"mime"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
 
@@ -91,7 +92,16 @@ func main() {
 	http.Handle("/", http.HandlerFunc(docsHandler))
 	http.Handle(*baseFlag, api)
 
-	http.ListenAndServe(fmt.Sprintf(":%d", *portFlag), nil)
+	go func() {
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", *portFlag), nil); err != nil {
+			log.Crit("Failed to start API server", "err", err)
+		}
+	}()
+	// Monitor for interrupts and terminate cleanly
+	sigc := make(chan os.Signal, 1)
+	signal.Notify(sigc, os.Interrupt)
+	defer signal.Stop(sigc)
+	<-sigc
 }
 
 // docsHandler handles all non-API requests, flattening and returning the docs.

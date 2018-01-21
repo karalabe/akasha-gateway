@@ -93,6 +93,9 @@ func makeIpfs(datadir string) (*ipfs, error) {
 
 // Close implements the closer interface.
 func (n *ipfs) Close() error {
+	if err := n.node.Pinning.Flush(); err != nil {
+		log.Error("Failed to flush IPFS pinner", "err", err)
+	}
 	return n.node.Close()
 }
 
@@ -147,7 +150,7 @@ func (n *ipfs) resolve(ctx context.Context, multihash string) (format.Node, erro
 				ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 				defer cancel()
 
-				if _, err := core.Resolve(ctx, n.node.Namesys, n.node.Resolver, path.Path(multihash)); err != nil {
+				if _, err = core.Resolve(ctx, n.node.Namesys, n.node.Resolver, path.Path(multihash)); err != nil {
 					log.Warn("Background IPFS resolution failed", "multihash", multihash)
 					return
 				}
@@ -156,6 +159,14 @@ func (n *ipfs) resolve(ctx context.Context, multihash string) (format.Node, erro
 		default:
 		}
 		return nil, err
+	}
+	// Object successfully resolved, pin it locally to retain for future calls
+	if _, pinned, _ := n.node.Pinning.IsPinned(obj.Cid()); !pinned {
+		if err := n.node.Pinning.Pin(ctx, obj, false); err != nil {
+			log.Warn("Failed to ping IPFS object", "hash", multihash, "err", err)
+		} else {
+			log.Info("Pinned requested IPFS object", "hash", multihash)
+		}
 	}
 	return obj, nil
 }
