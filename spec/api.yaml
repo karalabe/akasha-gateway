@@ -42,6 +42,8 @@ tags:
     description: User methods provide access to information and operations relating to registered Akasha users.
   - name: Entry
     description: Entry methods provide access to information and operations relating to Akasha content entries.
+  - name: Comment
+    description: Comment methods provide access to information and operations relating to Akasha entry comments.
 
 paths:
   /users/{id}:
@@ -78,7 +80,7 @@ paths:
       tags:
         - User
         - Entry
-      summary: Fetch user's list of entries
+      summary: Fetch user's entry list
       description: This endpoint can be used to retrieve the unique identifier of all the posts made by an Akasha user.
       parameters:
         - name: id
@@ -101,8 +103,8 @@ paths:
       tags:
         - User
         - Entry
-      summary: Fetch entry by known user
-      description: This endpoint can be used to retrieve all the available information about an Akasha post, which is known to have been made by a particular user.
+      summary: Fetch user's entry
+      description: This endpoint can be used to retrieve all the available information about an Akasha post made by a particular user.
       parameters:
         - name: userId
           in: path
@@ -132,12 +134,156 @@ paths:
         429:
           description: API quota exceeded
 
+  /users/{id}/entries/{entryId}/comments:
+    get:
+      tags:
+        - Entry
+        - Comment
+      summary: Fetch entry's comment list
+      description: This endpoint can be used to retrieve the unique identifier of all the comments made on an Akasha entry of a particular user.
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: Akasha user or Ethereum address
+          type: string
+        - name: entryId
+          in: path
+          required: true
+          description: Unique Akasha entry ID
+          type: string
+          format: hex hash
+        - name: timeout
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 60
+          description: Allowance for content retrival from IPFS
+      responses:
+        200:
+          description: Successful retrieval
+          schema:
+            $ref: "#/definitions/Comments"
+        404:
+          description: Non-registered user or non-existent post
+        429:
+          description: API quota exceeded
+
+  /users/{userId}/entries/{entryId}/comments/{commentId}:
+    get:
+      tags:
+        - Entry
+        - Comment
+      summary: Fetch entry's comment
+      description: This endpoint can be used to retrieve all the available information about an Akasha comment.
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: Akasha user or Ethereum address
+          type: string
+        - name: entryId
+          in: path
+          required: true
+          description: Unique Akasha entry ID
+          type: string
+          format: hex hash
+        - name: commentId
+          in: path
+          required: true
+          description: Unique Akasha comment ID
+          type: string
+          format: hex hash
+        - name: timeout
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 60
+          description: Allowance for content retrival from IPFS
+      responses:
+        200:
+          description: Successful retrieval
+          schema:
+            $ref: "#/definitions/Comment"
+        404:
+          description: Non-registered user, non-existent post or non-existent comment
+        429:
+          description: API quota exceeded
+
+  /users/{id}/comments:
+    get:
+      tags:
+        - User
+        - Comment
+      summary: Fetch user's comment list
+      description: This endpoint can be used to retrieve the unique identifier of all the comments made by a particular user.
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: Akasha user or Ethereum address
+          type: string
+        - name: timeout
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 60
+          description: Allowance for content retrival from IPFS
+      responses:
+        200:
+          description: Successful retrieval
+          schema:
+            $ref: "#/definitions/Comments"
+        404:
+          description: Non-registered user
+        429:
+          description: API quota exceeded
+
+  /users/{userId}/comments/{commentId}:
+    get:
+      tags:
+        - User
+        - Comment
+      summary: Fetch user's comment
+      description: This endpoint can be used to retrieve all the available information about an Akasha comment.
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          description: Akasha user or Ethereum address
+          type: string
+        - name: commentId
+          in: path
+          required: true
+          description: Unique Akasha comment ID
+          type: string
+          format: hex hash
+        - name: timeout
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 60
+          description: Allowance for content retrival from IPFS
+      responses:
+        200:
+          description: Successful retrieval
+          schema:
+            $ref: "#/definitions/Comment"
+        404:
+          description: Non-registered user or non-existent comment
+        429:
+          description: API quota exceeded
+
   /entries/{id}:
     get:
       tags:
         - Entry
-      summary: Fetch entry by unknown user
-      description: This endpoint can be used to retrieve all the available information about an Akasha post, the author of which is an unknown user.
+      summary: Find entry
+      description: This endpoint can be used to retrieve all the available information about an Akasha post made by an unknown user.
       parameters:
         - name: id
           in: path
@@ -159,6 +305,74 @@ paths:
             $ref: "#/definitions/Entry"
         404:
           description: Non-existent post
+        429:
+          description: API quota exceeded
+
+  /entries/{entryId}/comments:
+    get:
+      tags:
+        - Entry
+        - Comment
+      summary: Find entry's comment list
+      description: This endpoint can be used to retrieve the unique identifier of all the comments made on an Akasha entry of an unknown user.
+      parameters:
+        - name: entryId
+          in: path
+          required: true
+          description: Unique Akasha entry ID
+          type: string
+          format: hex hash
+        - name: timeout
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 60
+          description: Allowance for content retrival from IPFS
+      responses:
+        200:
+          description: Successful retrieval
+          schema:
+            $ref: "#/definitions/Comments"
+        404:
+          description: Non-existent post
+        429:
+          description: API quota exceeded
+
+  /entries/{entryId}/comments/{commentId}:
+    get:
+      tags:
+        - Entry
+        - Comment
+      summary: Find entry's comment
+      description: This endpoint can be used to retrieve all the available information about an Akasha comment.
+      parameters:
+        - name: entryId
+          in: path
+          required: true
+          description: Unique Akasha entry ID
+          type: string
+          format: hex hash
+        - name: commentId
+          in: path
+          required: true
+          description: Unique Akasha comment ID
+          type: string
+          format: hex hash
+        - name: timeout
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 60
+          description: Allowance for content retrival from IPFS
+      responses:
+        200:
+          description: Successful retrieval
+          schema:
+            $ref: "#/definitions/Comment"
+        404:
+          description: Non-existent post or non-existent comment
         429:
           description: API quota exceeded
 
@@ -332,5 +546,79 @@ definitions:
         {
           image: "https://ipfs.io/ipfs/QmcMtstnb8KYquqoQu6mjAa2u8s7f2kkLPrQBVLNSq2Ypn",
           caption: "Hackerman"
+        }
+      ]
+
+  Comments:
+    description: List of unique identifiers of comments made under a post.
+    type: array
+    items:
+      type: string
+      format: hex hash
+    example: [
+      "0x1024010f62fd7475d1298a8ec7d7dce4cb541c302c166be859ecfefce72f44be",
+      "0x5447cc6e30bddb601a17022075f22a251ac77c6c73180d1ee4fb17b99f4f0ccc",
+      "0x0f221863195c169521547d5cca9fd72f3286a326ace0f48023942e84b18ef281",
+      "0x85f20d8424565099735f1ec0828d3d8513780063d7f797c775c3d3319476e906"
+    ]
+
+  Comment:
+    description: Metadata and content of an Akasha comment
+    properties:
+      id:
+        type: string
+        format: hex hash
+        description: Unique comment ID within Akasha
+      author:
+        type: string
+        format: hex address
+        description: Ethereum address of the author
+      entry:
+        type: string
+        format: hex hash
+        description: Unique ID of the entry being commented
+      published:
+        type: string
+        format: time
+        description: Publishing time of the entry
+      content:
+        type: array
+        items:
+          type: object
+          properties:
+            caption:
+              type: string
+              description: Caption under a media object (excludes text)
+            image:
+              type: string
+              format: url
+              description: Image through the IPFS gateway (excludes text)
+            text:
+              type: string
+              description: Textual paragraph (excludes caption/image)
+        description: Entry contents per post paragraph
+    example:
+      id: "0xe5ccd86a35be8eb27264cc796a037b99d261324ba7be0c5e825c90b44affd7b2"
+      author: "0xd9c9cd5f6779558b6e0ed4e6acf6b1947e7fa1f3"
+      entry: "0x4b6c351ce166f621f7684795ca7da6acac0dbd3cd86c06add0f888a04671bf7e"
+      published: "2018-01-21T18:07:27+02:00"
+      content: [
+        {
+          text: "This is a funky comment with various text and [links](https://github.com) and whatnot"
+        },
+        {
+          image: "https://ipfs.io/ipfs/Qma4jTES9AH2Gqso1FNPzzLDx9nMp689DgxYNB5AJjoJMF"
+        },
+        {
+          text: "with the aim of testing this box and"
+        },
+        {
+          text: "whatever"
+        },
+        {
+          text: "it"
+        },
+        {
+          text: "generates"
         }
       ]

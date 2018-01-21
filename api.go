@@ -107,6 +107,58 @@ func (api *api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			res = entry
+
+		case len(path) == 5 && path[2] == "entries" && path[4] == "comments":
+			// User's entry's comment list requested, filter for and return
+			comments, err := api.akasha.CommentsByEntry(common.HexToHash(path[3]), timeout)
+			if err != nil {
+				if err == errUnknownUser || err == errUnknownEntry {
+					http.Error(w, err.Error(), http.StatusNotFound)
+					return
+				}
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			res = comments
+
+		case len(path) == 6 && path[2] == "entries" && path[4] == "comments":
+			// User's entry's comment requested, look up and return
+			comment, err := api.akasha.CommentByEntry(common.HexToHash(path[3]), common.HexToHash(path[5]), timeout)
+			if err != nil {
+				if err == errUnknownUser || err == errUnknownEntry || err == errUnknownComment {
+					http.Error(w, err.Error(), http.StatusNotFound)
+					return
+				}
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			res = comment
+
+		case len(path) == 3 && path[2] == "comments":
+			// User's comment list requested, filter for and return
+			comments, err := api.comments(path[1], timeout)
+			if err != nil {
+				if err == errUnknownUser {
+					http.Error(w, err.Error(), http.StatusNotFound)
+					return
+				}
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			res = comments
+
+		case len(path) == 4 && path[2] == "comments":
+			// User's comment list requested, filter for and return
+			comments, err := api.comment(path[1], common.HexToHash(path[3]), timeout)
+			if err != nil {
+				if err == errUnknownUser {
+					http.Error(w, err.Error(), http.StatusNotFound)
+					return
+				}
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			res = comments
 		}
 
 	case "entries":
@@ -123,6 +175,32 @@ func (api *api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			res = entry
+
+		case len(path) == 3 && path[2] == "comments":
+			// Anonymous entry's comment list requested, filter for and return
+			comments, err := api.akasha.CommentsByEntry(common.HexToHash(path[1]), timeout)
+			if err != nil {
+				if err == errUnknownEntry {
+					http.Error(w, err.Error(), http.StatusNotFound)
+					return
+				}
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			res = comments
+
+		case len(path) == 4 && path[2] == "comments":
+			// Anonymous entry's comment requested, look up and return
+			comment, err := api.akasha.CommentByEntry(common.HexToHash(path[1]), common.HexToHash(path[3]), timeout)
+			if err != nil {
+				if err == errUnknownEntry || err == errUnknownComment {
+					http.Error(w, err.Error(), http.StatusNotFound)
+					return
+				}
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			res = comment
 		}
 
 	default:
@@ -144,6 +222,15 @@ func (api *api) user(id string, timeout time.Duration) (*User, error) {
 	return api.akasha.UserByName(id, timeout)
 }
 
+// comments tries to figure out whether id is an Akasha username or an Ethereum
+// address and retrieves the Akasha comments posted by it.
+func (api *api) comments(id string, timeout time.Duration) ([]common.Hash, error) {
+	if common.IsHexAddress(id) {
+		return api.akasha.CommentsByAddress(common.HexToAddress(id), timeout)
+	}
+	return api.akasha.CommentsByName(id, timeout)
+}
+
 // entries tries to figure out whether id is an Akasha username or an Ethereum
 // address and retrieves the Akasha entries posted by it.
 func (api *api) entries(id string, timeout time.Duration) ([]common.Hash, error) {
@@ -160,4 +247,13 @@ func (api *api) entry(id string, hash common.Hash, timeout time.Duration) (*Entr
 		return api.akasha.EntryByAddress(common.HexToAddress(id), hash, timeout)
 	}
 	return api.akasha.EntryByName(id, hash, timeout)
+}
+
+// comment tries to figure out whether id is an Akasha username or an Ethereum
+// address and retrieves the Akasha comment belonging to it.
+func (api *api) comment(id string, hash common.Hash, timeout time.Duration) (*Comment, error) {
+	if common.IsHexAddress(id) {
+		return api.akasha.CommentByAddress(common.HexToAddress(id), hash, timeout)
+	}
+	return api.akasha.CommentByName(id, hash, timeout)
 }

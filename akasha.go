@@ -39,6 +39,9 @@ var (
 
 	// errUnknownEntry is returned if an entry cannot be found in the Akasha network.
 	errUnknownEntry = errors.New("unknown entry")
+
+	// errUnknownComment is returned if a comment cannot be found in the Akasha network.
+	errUnknownComment = errors.New("unknown comment")
 )
 
 // akasha represents the interface to the Akasha smart contracts.
@@ -113,22 +116,23 @@ func makeAkasha(geth *node.Node, ipfs *ipfs, conf *config) (*akasha, error) {
 // User represents all the known information about an Akasha user. The reason
 // beind the nullable strings is to allow signalling unreachable IPFS content.
 type User struct {
-	User    string         `json:"user"`
-	Name    *string        `json:"name"`
-	Address common.Address `json:"address"`
-	About   *string        `json:"about"`
-	Avatar  *string        `json:"avatar"`
-	Cover   *string        `json:"cover"`
-	Links   []string       `json:"links"`
-	Tips    bool           `json:"tips"`
-	Aether  *hexutil.Big   `json:"aether"`
-	Bonded  *hexutil.Big   `json:"bonded"`
-	Cycling *hexutil.Big   `json:"cycling"`
-	Mana    *hexutil.Big   `json:"mana"`
-	Spent   *hexutil.Big   `json:"spent"`
-	Essence *hexutil.Big   `json:"essence"`
-	Karma   *hexutil.Big   `json:"karma"`
-	Entries uint64         `json:"entries"`
+	User     string         `json:"user"`
+	Name     *string        `json:"name"`
+	Address  common.Address `json:"address"`
+	About    *string        `json:"about"`
+	Avatar   *string        `json:"avatar"`
+	Cover    *string        `json:"cover"`
+	Links    []string       `json:"links"`
+	Tips     bool           `json:"tips"`
+	Aether   *hexutil.Big   `json:"aether"`
+	Bonded   *hexutil.Big   `json:"bonded"`
+	Cycling  *hexutil.Big   `json:"cycling"`
+	Mana     *hexutil.Big   `json:"mana"`
+	Spent    *hexutil.Big   `json:"spent"`
+	Essence  *hexutil.Big   `json:"essence"`
+	Karma    *hexutil.Big   `json:"karma"`
+	Entries  uint64         `json:"entries"`
+	Comments uint64         `json:"comments"`
 }
 
 // image represents a serialize format of an Akasha image with multiple possbile
@@ -281,23 +285,28 @@ func (a *akasha) user(node [32]byte, timeout time.Duration) (*User, error) {
 	if err != nil {
 		return nil, err
 	}
+	comments, err := a.comments.TotalCommentsOf(nil, profile.Addr)
+	if err != nil {
+		return nil, err
+	}
 	return &User{
-		User:    strings.TrimRight(string(profile.AkashaId[:]), string([]byte{0})),
-		Name:    name,
-		Address: profile.Addr,
-		About:   about,
-		Avatar:  avatar,
-		Cover:   cover,
-		Links:   links,
-		Tips:    profile.DonationsEnabled,
-		Aether:  (*hexutil.Big)(balances.Free),
-		Bonded:  (*hexutil.Big)(balances.Bonded),
-		Cycling: (*hexutil.Big)(balances.Cycling),
-		Mana:    (*hexutil.Big)(mana.Total),
-		Spent:   (*hexutil.Big)(mana.Spent),
-		Essence: (*hexutil.Big)(credits.Essence),
-		Karma:   (*hexutil.Big)(credits.Karma),
-		Entries: entries.Uint64(),
+		User:     strings.TrimRight(string(profile.AkashaId[:]), string([]byte{0})),
+		Name:     name,
+		Address:  profile.Addr,
+		About:    about,
+		Avatar:   avatar,
+		Cover:    cover,
+		Links:    links,
+		Tips:     profile.DonationsEnabled,
+		Aether:   (*hexutil.Big)(balances.Free),
+		Bonded:   (*hexutil.Big)(balances.Bonded),
+		Cycling:  (*hexutil.Big)(balances.Cycling),
+		Mana:     (*hexutil.Big)(mana.Total),
+		Spent:    (*hexutil.Big)(mana.Spent),
+		Essence:  (*hexutil.Big)(credits.Essence),
+		Karma:    (*hexutil.Big)(credits.Karma),
+		Entries:  entries.Uint64(),
+		Comments: comments.Uint64(),
 	}, nil
 }
 
@@ -352,14 +361,6 @@ type Entry struct {
 	Version   *int           `json:"version"`
 	Comments  uint64         `json:"comments"`
 	Content   *[]Block       `json:"content"`
-}
-
-// Block represents a single paragraph in an Akasha entry, which might be purely
-// text, or might be some media object.
-type Block struct {
-	Text    string `json:"text,omitempty"`
-	Image   string `json:"image,omitempty"`
-	Caption string `json:"caption,omitempty"`
 }
 
 // Entry retrieves all the details about a particular entry any user might have
@@ -476,29 +477,9 @@ func (a *akasha) entry(event *contracts.EntriesPublish, timeout time.Duration) (
 			default:
 			}
 			// Parse the document and create the list of data blocks
-			var doc struct {
-				Blocks []struct {
-					Text string `json:"text"`
-					Data struct {
-						Caption string `json:"caption"`
-						Files   image  `json:"files"`
-					} `json:"data"`
-				} `json:"blocks"`
-			}
-			if err = json.Unmarshal(document, &doc); err != nil {
+			content, err := parseDraftjs(document)
+			if err != nil {
 				return nil, err
-			}
-			content := []Block{}
-			for _, block := range doc.Blocks {
-				switch {
-				case block.Text != "":
-					content = append(content, Block{Text: block.Text})
-				case block.Data.Files.source() != "":
-					content = append(content, Block{
-						Image:   "https://ipfs.io/ipfs/" + block.Data.Files.source(),
-						Caption: block.Data.Caption,
-					})
-				}
 			}
 			entry.Content = &content
 		}
@@ -506,21 +487,197 @@ func (a *akasha) entry(event *contracts.EntriesPublish, timeout time.Duration) (
 	return entry, nil
 }
 
+// CommentsByAddress retrieves a list of comments by a user given its Ethereum
+// address.
+func (a *akasha) CommentsByAddress(addr common.Address, timeout time.Duration) ([]common.Hash, error) {
+	// Filter the Ethereum events for Akasha comment publishes
+	it, err := a.comments.FilterPublish(nil, []common.Address{addr}, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer it.Close()
+
+	// Gather all the entry ids and return them to the user
+	var ids []common.Hash
+	for it.Next() {
+		ids = append(ids, it.Event.Id)
+	}
+	return ids, nil
+}
+
+// CommentsByName retrieves a list of comments posted by a user given its Akasha
+// username.
+func (a *akasha) CommentsByName(name string, timeout time.Duration) ([]common.Hash, error) {
+	// Resolve the user's address from its ID
+	var label [32]byte
+	copy(label[:], name)
+
+	node, err := a.registrar.Hash(nil, label)
+	if err != nil {
+		return nil, err
+	}
+	profile, err := a.resolver.Resolve(nil, node)
+	if err != nil {
+		return nil, err
+	}
+	if profile.Addr == (common.Address{}) {
+		return nil, errUnknownUser
+	}
+	// Retrieve the user's comments using the Ethereum address
+	return a.CommentsByAddress(profile.Addr, timeout)
+}
+
+// CommentsByEntry retrieves a list of comments posted on an Akasha entry.
+func (a *akasha) CommentsByEntry(entry common.Hash, timeout time.Duration) ([]common.Hash, error) {
+	// Filter the Ethereum events for Akasha comment publishes
+	it, err := a.comments.FilterPublish(nil, nil, [][32]byte{entry}, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer it.Close()
+
+	// Gather all the entry ids and return them to the user
+	var ids []common.Hash
+	for it.Next() {
+		ids = append(ids, it.Event.Id)
+	}
+	return ids, nil
+}
+
+// Comment represents all the known information about an Akasha entry comment.
+// The reason beind the nullable strings is to allow signalling unreachable
+// IPFS content.
+type Comment struct {
+	ID        common.Hash    `json:"id"`
+	Author    common.Address `json:"author"`
+	Entry     common.Hash    `json:"entry"`
+	Published time.Time      `json:"published"`
+	Content   *[]Block       `json:"content"`
+}
+
+// CommentsByAddress retrieves all the known details about an Akasha post comment.
+func (a *akasha) CommentByAddress(addr common.Address, hash common.Hash, timeout time.Duration) (*Comment, error) {
+	// Filter the Ethereum events for Akasha comment publishes
+	it, err := a.comments.FilterPublish(nil, []common.Address{addr}, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer it.Close()
+
+	// Find the particular comment requested
+	for it.Next() {
+		if it.Event.Id == hash {
+			return a.comment(it.Event, timeout)
+		}
+	}
+	return nil, errUnknownComment
+}
+
+// CommentsByName retrieves all the known details about an Akasha post comment.
+func (a *akasha) CommentByName(name string, hash common.Hash, timeout time.Duration) (*Comment, error) {
+	// Resolve the user's address from its ID
+	var label [32]byte
+	copy(label[:], name)
+
+	node, err := a.registrar.Hash(nil, label)
+	if err != nil {
+		return nil, err
+	}
+	profile, err := a.resolver.Resolve(nil, node)
+	if err != nil {
+		return nil, err
+	}
+	if profile.Addr == (common.Address{}) {
+		return nil, errUnknownUser
+	}
+	// Retrieve the user's comment using the Ethereum address
+	return a.CommentByAddress(profile.Addr, hash, timeout)
+}
+
+// CommentByEntry retrieves all the known details about an Akasha post comment.
+func (a *akasha) CommentByEntry(entry common.Hash, hash common.Hash, timeout time.Duration) (*Comment, error) {
+	// Filter for all the comments of a particular entry
+	it, err := a.comments.FilterPublish(nil, nil, [][32]byte{entry}, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer it.Close()
+
+	// Find the particular comment requested
+	for it.Next() {
+		if it.Event.Id == hash {
+			return a.comment(it.Event, timeout)
+		}
+	}
+	return nil, errUnknownComment
+}
+
+// comment retrieves all the known details about an Akasha post comment based on
+// the publish log from the Ethereum contract.
+func (a *akasha) comment(event *contracts.CommentsPublish, timeout time.Duration) (*Comment, error) {
+	// Resolve the IPFS id of the comment
+	post, err := a.comments.GetComment(nil, event.EntryId, event.Id)
+	if err != nil {
+		return nil, err
+	}
+	id := base58.Encode(append([]byte{post.Fn, post.DigestSize}, post.Hash[:]...))
+
+	// Start assembling the comment with whatever data we can pull off IPFS
+	header, err := a.eth.HeaderByHash(context.TODO(), event.Raw.BlockHash)
+	if err != nil {
+		return nil, err
+	}
+	comment := &Comment{
+		ID:        event.Id,
+		Author:    event.Author,
+		Entry:     event.EntryId,
+		Published: time.Unix(header.Time.Int64(), 0),
+	}
+	// Retrieve the content of the comment
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	blob, err := a.ipfs.Content(ctx, id)
+	if err == nil {
+		// Comment metadata retrieved, extract the comment content
+		var metadata struct {
+			Content string `json:"content"`
+		}
+		if err = json.Unmarshal(blob, &metadata); err != nil {
+			return nil, err
+		}
+		// Parse the document and create the list of data blocks
+		content, err := parseDraftjs([]byte(metadata.Content))
+		if err != nil {
+			return nil, err
+		}
+		comment.Content = &content
+	}
+	return comment, nil
+}
+
 // Prefetch starts a background process to monitor the Ethereum chain for Akasha
 // contract events and prefetch any IPFS resources when they are published.
 func (a *akasha) Prefetch() error {
 	// Start a prefetcher for entry publishes
-	pubs := make(chan *contracts.EntriesPublish, 128)
+	entryPubs := make(chan *contracts.EntriesPublish, 128)
+	commentPubs := make(chan *contracts.CommentsPublish, 128)
 
-	pubSub, err := a.entries.WatchPublish(nil, pubs, nil, nil)
+	entrySub, err := a.entries.WatchPublish(nil, entryPubs, nil, nil)
+	if err != nil {
+		return err
+	}
+	commentSub, err := a.comments.WatchPublish(nil, commentPubs, nil, nil, nil)
 	if err != nil {
 		return err
 	}
 	go func() {
-		defer pubSub.Unsubscribe()
+		defer entrySub.Unsubscribe()
+		defer commentSub.Unsubscribe()
+
 		for {
 			select {
-			case event := <-pubs:
+			case event := <-entryPubs:
 				// Notification arrived for new entry in Akasha, prefetch it
 				log.Info("Prefetching new entry", "author", event.Author, "entry", common.Hash(event.EntryId))
 
@@ -535,8 +692,26 @@ func (a *akasha) Prefetch() error {
 						log.Info("Prefetched new entry", "author", event.Author, "entry", common.Hash(event.EntryId), "title", *entry.Title)
 					}
 				}()
-			case err := <-pubSub.Err():
-				log.Error("Publish event watch failed: %v", err)
+			case event := <-commentPubs:
+				// Notification arrived for new comment in Akasha, prefetch it
+				log.Info("Prefetching new comment", "author", event.Author, "entry", common.Hash(event.EntryId), "comment", common.Hash(event.Id))
+
+				go func() {
+					entry, err := a.comment(event, 15*time.Second)
+					switch {
+					case err != nil:
+						log.Error("Failed to prefetch published comment", "author", event.Author, "entry", common.Hash(event.EntryId), "comment", common.Hash(event.Id), "err", err)
+					case entry.Content == nil:
+						log.Warn("Failed to prefetch published comment", "author", event.Author, "entry", common.Hash(event.EntryId), "comment", common.Hash(event.Id))
+					default:
+						log.Info("Prefetched new comment", "author", event.Author, "entry", common.Hash(event.EntryId), "comment", common.Hash(event.Id))
+					}
+				}()
+			case err := <-entrySub.Err():
+				log.Error("Entry publish event watch failed: %v", err)
+				return
+			case err := <-entrySub.Err():
+				log.Error("Comment publish event watch failed: %v", err)
 				return
 			}
 		}

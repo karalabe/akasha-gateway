@@ -37,3 +37,9 @@ $ docker run -p 80:8080 -v /my/data/dir:/root/.akasha:rw karalabe/akasha-gateway
 ```
 
 For a list of flags, please consult `akasha-gateway --help` or `docker run karalabe/akasha-gateway --help`.
+
+## Internals
+
+The Akasha gateway is a combo Ethereum and IPFS node in a single process. It attaches to both networks and serves user requests by retrieving the social network's state from Ethereum and resolves data content from IPFS.
+
+Since IPFS data availability is questionable (posting user goes offline), the Akasha gateway constantly watches the Ethereum network for publish events (post, comment, etc) and tries to prefetch them at the moment of publication (high chance that the user is still online). Any content (prefetched or not) successfully resolved from the IPFS network gets pinned into the local datastore to avoid future resource consumption.
