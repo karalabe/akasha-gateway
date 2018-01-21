@@ -51,6 +51,7 @@ type akasha struct {
 	resolver  *contracts.ProfileResolver
 	registrar *contracts.ProfileRegistrar
 	entries   *contracts.Entries
+	comments  *contracts.Comments
 	feed      *contracts.Feed
 }
 
@@ -61,6 +62,7 @@ type config struct {
 	ResolverAddress  common.Address
 	RegistrarAddress common.Address
 	EntriesAddress   common.Address
+	CommentsAddress  common.Address
 }
 
 // makeAkasha creates a programatic interface to the Akasha smart contracts.
@@ -92,6 +94,10 @@ func makeAkasha(geth *node.Node, ipfs *ipfs, conf *config) (*akasha, error) {
 	if err != nil {
 		return nil, err
 	}
+	comments, err := contracts.NewComments(conf.CommentsAddress, client)
+	if err != nil {
+		return nil, err
+	}
 	return &akasha{
 		eth:       client,
 		ipfs:      ipfs,
@@ -100,6 +106,7 @@ func makeAkasha(geth *node.Node, ipfs *ipfs, conf *config) (*akasha, error) {
 		resolver:  resolver,
 		registrar: registrar,
 		entries:   entries,
+		comments:  comments,
 	}, nil
 }
 
@@ -343,6 +350,7 @@ type Entry struct {
 	Published time.Time      `json:"published"`
 	Tags      *[]string      `json:"tags"`
 	Version   *int           `json:"version"`
+	Comments  uint64         `json:"comments"`
 	Content   *[]Block       `json:"content"`
 }
 
@@ -421,10 +429,15 @@ func (a *akasha) entry(event *contracts.EntriesPublish, timeout time.Duration) (
 	if err != nil {
 		return nil, err
 	}
+	comments, err := a.comments.TotalComments(nil, event.EntryId)
+	if err != nil {
+		return nil, err
+	}
 	entry := &Entry{
 		ID:        event.EntryId,
 		Author:    event.Author,
 		Published: time.Unix(header.Time.Int64(), 0),
+		Comments:  comments.Uint64(),
 	}
 	// Retrieve the components of the entry and resolve the individual contents
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)

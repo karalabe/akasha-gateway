@@ -762,7 +762,7 @@ func (it *ProfileResolverOwnershipTransferredIterator) Next() bool {
 	}
 }
 
-// Error retruned any retrieval or parsing error occured during filtering.
+// Error retruned any retrieval or parsing error occurred during filtering.
 func (it *ProfileResolverOwnershipTransferredIterator) Error() error {
 	return it.fail
 }
@@ -845,6 +845,5 @@ func (_ProfileResolver *ProfileResolverFilterer) WatchOwnershipTransferred(opts 
 				return nil
 			}
 		}
-		return nil
 	}), nil
 }

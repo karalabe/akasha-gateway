@@ -481,7 +481,7 @@ func (it *FeedFollowIterator) Next() bool {
 	}
 }
 
-// Error retruned any retrieval or parsing error occured during filtering.
+// Error retruned any retrieval or parsing error occurred during filtering.
 func (it *FeedFollowIterator) Error() error {
 	return it.fail
 }
@@ -564,7 +564,6 @@ func (_Feed *FeedFilterer) WatchFollow(opts *bind.WatchOpts, sink chan<- *FeedFo
 				return nil
 			}
 		}
-		return nil
 	}), nil
 }
 
@@ -623,7 +622,7 @@ func (it *FeedOwnershipTransferredIterator) Next() bool {
 	}
 }
 
-// Error retruned any retrieval or parsing error occured during filtering.
+// Error retruned any retrieval or parsing error occurred during filtering.
 func (it *FeedOwnershipTransferredIterator) Error() error {
 	return it.fail
 }
@@ -706,7 +705,6 @@ func (_Feed *FeedFilterer) WatchOwnershipTransferred(opts *bind.WatchOpts, sink 
 				return nil
 			}
 		}
-		return nil
 	}), nil
 }
 
@@ -765,7 +763,7 @@ func (it *FeedUnFollowIterator) Next() bool {
 	}
 }
 
-// Error retruned any retrieval or parsing error occured during filtering.
+// Error retruned any retrieval or parsing error occurred during filtering.
 func (it *FeedUnFollowIterator) Error() error {
 	return it.fail
 }
@@ -848,6 +846,5 @@ func (_Feed *FeedFilterer) WatchUnFollow(opts *bind.WatchOpts, sink chan<- *Feed
 				return nil
 			}
 		}
-		return nil
 	}), nil
 }

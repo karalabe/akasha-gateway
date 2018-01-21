@@ -747,7 +747,7 @@ func (it *EntriesOwnershipTransferredIterator) Next() bool {
 	}
 }
 
-// Error retruned any retrieval or parsing error occured during filtering.
+// Error retruned any retrieval or parsing error occurred during filtering.
 func (it *EntriesOwnershipTransferredIterator) Error() error {
 	return it.fail
 }
@@ -830,7 +830,6 @@ func (_Entries *EntriesFilterer) WatchOwnershipTransferred(opts *bind.WatchOpts,
 				return nil
 			}
 		}
-		return nil
 	}), nil
 }
 
@@ -889,7 +888,7 @@ func (it *EntriesPublishIterator) Next() bool {
 	}
 }
 
-// Error retruned any retrieval or parsing error occured during filtering.
+// Error retruned any retrieval or parsing error occurred during filtering.
 func (it *EntriesPublishIterator) Error() error {
 	return it.fail
 }
@@ -972,7 +971,6 @@ func (_Entries *EntriesFilterer) WatchPublish(opts *bind.WatchOpts, sink chan<- 
 				return nil
 			}
 		}
-		return nil
 	}), nil
 }
 
@@ -1031,7 +1029,7 @@ func (it *EntriesTagIndexIterator) Next() bool {
 	}
 }
 
-// Error retruned any retrieval or parsing error occured during filtering.
+// Error retruned any retrieval or parsing error occurred during filtering.
 func (it *EntriesTagIndexIterator) Error() error {
 	return it.fail
 }
@@ -1123,7 +1121,6 @@ func (_Entries *EntriesFilterer) WatchTagIndex(opts *bind.WatchOpts, sink chan<-
 				return nil
 			}
 		}
-		return nil
 	}), nil
 }
 
@@ -1182,7 +1179,7 @@ func (it *EntriesUpdateIterator) Next() bool {
 	}
 }
 
-// Error retruned any retrieval or parsing error occured during filtering.
+// Error retruned any retrieval or parsing error occurred during filtering.
 func (it *EntriesUpdateIterator) Error() error {
 	return it.fail
 }
@@ -1265,6 +1262,5 @@ func (_Entries *EntriesFilterer) WatchUpdate(opts *bind.WatchOpts, sink chan<- *
 				return nil
 			}
 		}
-		return nil
 	}), nil
 }

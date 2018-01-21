@@ -291,6 +291,9 @@ definitions:
       version:
         type: int
         description: Number of times the entry was edited
+      comments:
+        type: int
+        description: Number of comments posted on the entry
       content:
         type: array
         items:
@@ -317,7 +320,8 @@ definitions:
         "aeth",
         "testnet"
       ]
-      version: 0
+      version: 1
+      comments: 1
       content: [
         {
           text: "If you have an existing Ethereum account on the Rinkeby testnet and log in to Akasha using it, you won't get onboarded, and as such, won't get any AETH to interact with Akasha."

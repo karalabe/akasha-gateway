@@ -75,6 +75,7 @@ func main() {
 		ResolverAddress:  common.HexToAddress("0xa6100e99dda74e8aad319f4c4bae098694c910a4"),
 		RegistrarAddress: common.HexToAddress("0x3f4df77876fb393975daa074301d2913699c28dc"),
 		EntriesAddress:   common.HexToAddress("0x315406c6e19a0781a65d65dba2f40b4d96dd8952"),
+		CommentsAddress:  common.HexToAddress("0x734Fd84cA57371025e2062E56754165fA877D629"),
 	})
 	if err != nil {
 		log.Crit("Failed to interface Akasha", "err", err)

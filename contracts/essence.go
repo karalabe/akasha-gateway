@@ -668,7 +668,7 @@ func (it *EssenceCollectEssenceIterator) Next() bool {
 	}
 }
 
-// Error retruned any retrieval or parsing error occured during filtering.
+// Error retruned any retrieval or parsing error occurred during filtering.
 func (it *EssenceCollectEssenceIterator) Error() error {
 	return it.fail
 }
@@ -746,7 +746,6 @@ func (_Essence *EssenceFilterer) WatchCollectEssence(opts *bind.WatchOpts, sink 
 				return nil
 			}
 		}
-		return nil
 	}), nil
 }
 
@@ -805,7 +804,7 @@ func (it *EssenceConvertEssenceIterator) Next() bool {
 	}
 }
 
-// Error retruned any retrieval or parsing error occured during filtering.
+// Error retruned any retrieval or parsing error occurred during filtering.
 func (it *EssenceConvertEssenceIterator) Error() error {
 	return it.fail
 }
@@ -880,7 +879,6 @@ func (_Essence *EssenceFilterer) WatchConvertEssence(opts *bind.WatchOpts, sink 
 				return nil
 			}
 		}
-		return nil
 	}), nil
 }
 
@@ -939,7 +937,7 @@ func (it *EssenceOwnershipTransferredIterator) Next() bool {
 	}
 }
 
-// Error retruned any retrieval or parsing error occured during filtering.
+// Error retruned any retrieval or parsing error occurred during filtering.
 func (it *EssenceOwnershipTransferredIterator) Error() error {
 	return it.fail
 }
@@ -1022,7 +1020,6 @@ func (_Essence *EssenceFilterer) WatchOwnershipTransferred(opts *bind.WatchOpts,
 				return nil
 			}
 		}
-		return nil
 	}), nil
 }
 
@@ -1081,7 +1078,7 @@ func (it *EssenceRefreshManaIterator) Next() bool {
 	}
 }
 
-// Error retruned any retrieval or parsing error occured during filtering.
+// Error retruned any retrieval or parsing error occurred during filtering.
 func (it *EssenceRefreshManaIterator) Error() error {
 	return it.fail
 }
@@ -1146,7 +1143,6 @@ func (_Essence *EssenceFilterer) WatchRefreshMana(opts *bind.WatchOpts, sink cha
 				return nil
 			}
 		}
-		return nil
 	}), nil
 }
 
@@ -1205,7 +1201,7 @@ func (it *EssenceSpendManaIterator) Next() bool {
 	}
 }
 
-// Error retruned any retrieval or parsing error occured during filtering.
+// Error retruned any retrieval or parsing error occurred during filtering.
 func (it *EssenceSpendManaIterator) Error() error {
 	return it.fail
 }
@@ -1291,6 +1287,5 @@ func (_Essence *EssenceFilterer) WatchSpendMana(opts *bind.WatchOpts, sink chan<
 				return nil
 			}
 		}
-		return nil
 	}), nil
 }

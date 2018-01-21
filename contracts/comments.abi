@@ -1,0 +1,533 @@
+[
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_entryId",
+        "type": "bytes32"
+      },
+      {
+        "name": "_entryAuthor",
+        "type": "address"
+      },
+      {
+        "name": "_commentId",
+        "type": "bytes32"
+      },
+      {
+        "name": "_hash",
+        "type": "bytes32"
+      },
+      {
+        "name": "_fn",
+        "type": "uint8"
+      },
+      {
+        "name": "_digestSize",
+        "type": "uint8"
+      }
+    ],
+    "name": "edit",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "_entryId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "totalComments",
+    "outputs": [
+      {
+        "name": "_total",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "_entryId",
+        "type": "bytes32"
+      },
+      {
+        "name": "_commentId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "isDeleted",
+    "outputs": [
+      {
+        "name": "_deleted",
+        "type": "bool"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "discount_every",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address"
+      }
+    ],
+    "name": "reclaimToken",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_votes",
+        "type": "address"
+      }
+    ],
+    "name": "setVotes",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_entryId",
+        "type": "bytes32"
+      },
+      {
+        "name": "_entryAuthor",
+        "type": "address"
+      },
+      {
+        "name": "_commentId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "deleteComment",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "_entryId",
+        "type": "bytes32"
+      },
+      {
+        "name": "_commentId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getComment",
+    "outputs": [
+      {
+        "name": "parent",
+        "type": "bytes32"
+      },
+      {
+        "name": "author",
+        "type": "address"
+      },
+      {
+        "name": "deleted",
+        "type": "bool"
+      },
+      {
+        "name": "publishDate",
+        "type": "uint256"
+      },
+      {
+        "name": "_fn",
+        "type": "uint8"
+      },
+      {
+        "name": "_digestSize",
+        "type": "uint8"
+      },
+      {
+        "name": "_hash",
+        "type": "bytes32"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_entryId",
+        "type": "bytes32"
+      },
+      {
+        "name": "_entryAuthor",
+        "type": "address"
+      },
+      {
+        "name": "_parent",
+        "type": "bytes32"
+      },
+      {
+        "name": "_hash",
+        "type": "bytes32"
+      },
+      {
+        "name": "_fn",
+        "type": "uint8"
+      },
+      {
+        "name": "_digestSize",
+        "type": "uint8"
+      }
+    ],
+    "name": "publish",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "_entryId",
+        "type": "bytes32"
+      },
+      {
+        "name": "_commentId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "exists",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_essence",
+        "type": "address"
+      }
+    ],
+    "name": "setEssence",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [],
+    "name": "reclaimEther",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "_publisher",
+        "type": "address"
+      }
+    ],
+    "name": "totalCommentsOf",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "_entryId",
+        "type": "bytes32"
+      },
+      {
+        "name": "_commentId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "commentAuthor",
+    "outputs": [
+      {
+        "name": "_author",
+        "type": "address"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "from_",
+        "type": "address"
+      },
+      {
+        "name": "value_",
+        "type": "uint256"
+      },
+      {
+        "name": "data_",
+        "type": "bytes"
+      }
+    ],
+    "name": "tokenFallback",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_entries",
+        "type": "address"
+      }
+    ],
+    "name": "setEntries",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "voting_period",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_period",
+        "type": "uint256"
+      }
+    ],
+    "name": "setVotingPeriod",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "required_essence",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "_amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "setRequiredEssence",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "fallback"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "author",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "entryId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "name": "parent",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "name": "id",
+        "type": "bytes32"
+      }
+    ],
+    "name": "Publish",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "author",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "entryId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": true,
+        "name": "id",
+        "type": "bytes32"
+      }
+    ],
+    "name": "Update",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "previousOwner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnershipTransferred",
+    "type": "event"
+  }
+]

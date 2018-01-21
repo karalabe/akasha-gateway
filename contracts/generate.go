@@ -19,6 +19,7 @@
 //go:generate abigen -abi ./profileResolver.abi -pkg contracts -type ProfileResolver -out profileResolver.go
 //go:generate abigen -abi ./profileRegistrar.abi -pkg contracts -type ProfileRegistrar -out profileRegistrar.go
 //go:generate abigen -abi ./entries.abi -pkg contracts -type Entries -out entries.go
+//go:generate abigen -abi ./comments.abi -pkg contracts -type Comments -out comments.go
 //go:generate abigen -abi ./feed.abi -pkg contracts -type Feed -out feed.go
 
 // Package contracts are the Go-bound Akasha smart contracts.

@@ -649,7 +649,7 @@ func (it *ProfileRegistrarOwnershipTransferredIterator) Next() bool {
 	}
 }
 
-// Error retruned any retrieval or parsing error occured during filtering.
+// Error retruned any retrieval or parsing error occurred during filtering.
 func (it *ProfileRegistrarOwnershipTransferredIterator) Error() error {
 	return it.fail
 }
@@ -732,7 +732,6 @@ func (_ProfileRegistrar *ProfileRegistrarFilterer) WatchOwnershipTransferred(opt
 				return nil
 			}
 		}
-		return nil
 	}), nil
 }
 
@@ -791,7 +790,7 @@ func (it *ProfileRegistrarRegisterIterator) Next() bool {
 	}
 }
 
-// Error retruned any retrieval or parsing error occured during filtering.
+// Error retruned any retrieval or parsing error occurred during filtering.
 func (it *ProfileRegistrarRegisterIterator) Error() error {
 	return it.fail
 }
@@ -874,6 +873,5 @@ func (_ProfileRegistrar *ProfileRegistrarFilterer) WatchRegister(opts *bind.Watc
 				return nil
 			}
 		}
-		return nil
 	}), nil
 }

@@ -1021,7 +1021,7 @@ func (it *AETHApprovalIterator) Next() bool {
 	}
 }
 
-// Error retruned any retrieval or parsing error occured during filtering.
+// Error retruned any retrieval or parsing error occurred during filtering.
 func (it *AETHApprovalIterator) Error() error {
 	return it.fail
 }
@@ -1105,7 +1105,6 @@ func (_AETH *AETHFilterer) WatchApproval(opts *bind.WatchOpts, sink chan<- *AETH
 				return nil
 			}
 		}
-		return nil
 	}), nil
 }
 
@@ -1164,7 +1163,7 @@ func (it *AETHDonateIterator) Next() bool {
 	}
 }
 
-// Error retruned any retrieval or parsing error occured during filtering.
+// Error retruned any retrieval or parsing error occurred during filtering.
 func (it *AETHDonateIterator) Error() error {
 	return it.fail
 }
@@ -1250,7 +1249,6 @@ func (_AETH *AETHFilterer) WatchDonate(opts *bind.WatchOpts, sink chan<- *AETHDo
 				return nil
 			}
 		}
-		return nil
 	}), nil
 }
 
@@ -1309,7 +1307,7 @@ func (it *AETHMintIterator) Next() bool {
 	}
 }
 
-// Error retruned any retrieval or parsing error occured during filtering.
+// Error retruned any retrieval or parsing error occurred during filtering.
 func (it *AETHMintIterator) Error() error {
 	return it.fail
 }
@@ -1384,7 +1382,6 @@ func (_AETH *AETHFilterer) WatchMint(opts *bind.WatchOpts, sink chan<- *AETHMint
 				return nil
 			}
 		}
-		return nil
 	}), nil
 }
 
@@ -1443,7 +1440,7 @@ func (it *AETHMintFinishedIterator) Next() bool {
 	}
 }
 
-// Error retruned any retrieval or parsing error occured during filtering.
+// Error retruned any retrieval or parsing error occurred during filtering.
 func (it *AETHMintFinishedIterator) Error() error {
 	return it.fail
 }
@@ -1506,7 +1503,6 @@ func (_AETH *AETHFilterer) WatchMintFinished(opts *bind.WatchOpts, sink chan<- *
 				return nil
 			}
 		}
-		return nil
 	}), nil
 }
 
@@ -1565,7 +1561,7 @@ func (it *AETHOwnershipTransferredIterator) Next() bool {
 	}
 }
 
-// Error retruned any retrieval or parsing error occured during filtering.
+// Error retruned any retrieval or parsing error occurred during filtering.
 func (it *AETHOwnershipTransferredIterator) Error() error {
 	return it.fail
 }
@@ -1648,7 +1644,6 @@ func (_AETH *AETHFilterer) WatchOwnershipTransferred(opts *bind.WatchOpts, sink 
 				return nil
 			}
 		}
-		return nil
 	}), nil
 }
 
@@ -1707,7 +1702,7 @@ func (it *AETHPauseIterator) Next() bool {
 	}
 }
 
-// Error retruned any retrieval or parsing error occured during filtering.
+// Error retruned any retrieval or parsing error occurred during filtering.
 func (it *AETHPauseIterator) Error() error {
 	return it.fail
 }
@@ -1770,7 +1765,6 @@ func (_AETH *AETHFilterer) WatchPause(opts *bind.WatchOpts, sink chan<- *AETHPau
 				return nil
 			}
 		}
-		return nil
 	}), nil
 }
 
@@ -1829,7 +1823,7 @@ func (it *AETHTransferIterator) Next() bool {
 	}
 }
 
-// Error retruned any retrieval or parsing error occured during filtering.
+// Error retruned any retrieval or parsing error occurred during filtering.
 func (it *AETHTransferIterator) Error() error {
 	return it.fail
 }
@@ -1913,7 +1907,6 @@ func (_AETH *AETHFilterer) WatchTransfer(opts *bind.WatchOpts, sink chan<- *AETH
 				return nil
 			}
 		}
-		return nil
 	}), nil
 }
 
@@ -1972,7 +1965,7 @@ func (it *AETHTransitionIterator) Next() bool {
 	}
 }
 
-// Error retruned any retrieval or parsing error occured during filtering.
+// Error retruned any retrieval or parsing error occurred during filtering.
 func (it *AETHTransitionIterator) Error() error {
 	return it.fail
 }
@@ -2038,7 +2031,6 @@ func (_AETH *AETHFilterer) WatchTransition(opts *bind.WatchOpts, sink chan<- *AE
 				return nil
 			}
 		}
-		return nil
 	}), nil
 }
 
@@ -2097,7 +2089,7 @@ func (it *AETHUnpauseIterator) Next() bool {
 	}
 }
 
-// Error retruned any retrieval or parsing error occured during filtering.
+// Error retruned any retrieval or parsing error occurred during filtering.
 func (it *AETHUnpauseIterator) Error() error {
 	return it.fail
 }
@@ -2160,6 +2152,5 @@ func (_AETH *AETHFilterer) WatchUnpause(opts *bind.WatchOpts, sink chan<- *AETHU
 				return nil
 			}
 		}
-		return nil
 	}), nil
 }
